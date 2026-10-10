@@ -1,7 +1,8 @@
-# .gitignore
 node_modules/
+dist/
+.vercel/
 .DS_Store
 *.log
 .env
-dist/
-build/
+.env.local
+.env.*.local

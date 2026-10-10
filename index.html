@@ -1,62 +1,17 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ANVIL — AI Coding Assistant</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div class="app">
-    <header class="header">
-      <div class="logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 3v12l6 6 6-6V3"/>
-          <path d="M12 21V9"/>
-        </svg>
-        <h1>ANVIL</h1>
-      </div>
-      <div class="subtitle">AI Coding Assistant</div>
-      <div class="header-actions">
-        <button id="new-chat">New Chat</button>
-      </div>
-    </header>
-
-    <main class="main">
-      <aside class="sidebar">
-        <div class="sidebar-header">Files</div>
-        <div id="file-tree"></div>
-      </aside>
-
-      <section class="chat-panel">
-        <div class="messages" id="messages">
-          <div class="message ai">
-            <strong>ANVIL:</strong> Ready. Describe what you want to build, fix, or explain and I’ll generate the code.
-          </div>
-        </div>
-        <div class="input-area">
-          <textarea id="prompt" placeholder="Ask ANVIL to write code, fix bugs, explain concepts..." rows="3"></textarea>
-          <button id="send">Send</button>
-        </div>
-      </section>
-
-      <section class="editor-panel">
-        <div class="editor-header">
-          <span id="filename">main.js</span>
-          <div>
-            <button id="run">Run</button>
-            <button id="copy">Copy</button>
-          </div>
-        </div>
-        <textarea id="code" class="code-editor" spellcheck="false">// Your code will appear here
-console.log("Welcome to ANVIL");
-</textarea>
-        <div class="output" id="output"></div>
-      </section>
-    </main>
-  </div>
-  <script src="config.js"></script>
-  <script src="explorer.js"></script>
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0c0e" />
+    <meta
+      name="description"
+      content="ANVIL — a web-based, provider-agnostic AI coding agent. An open alternative to Cursor, Claude Code and Codex."
+    />
+    <title>ANVIL — AI Coding Agent</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
