@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, LogLine, PendingChange, Settings } from "./types";
 import { vfs } from "./lib/vfs";
-import { loadSettings, saveSettings } from "./lib/storage";
+import { loadSettings, saveSettings, loadChat, saveChat, clearChat } from "./lib/storage";
+import { serializeProject, parseProject } from "./lib/project";
 import { getProvider } from "./lib/providers";
 import { streamText } from "./lib/llm";
 import { runAgentTurn } from "./lib/agent";
@@ -24,6 +25,18 @@ Guidelines:
 - Keep files small and self-contained where reasonable. Prefer clear, working code.
 - After acting, give a short summary in markdown of what you changed.`;
 
+let _chatCache: ReturnType<typeof loadChat> | undefined;
+function initialChat() {
+  if (_chatCache === undefined) _chatCache = loadChat();
+  return _chatCache;
+}
+
+function restoreHistory(): ChatMessage[] {
+  const saved = initialChat()?.history ?? [];
+  if (saved.length && saved[0].role === "system") return saved;
+  return [{ role: "system", content: SYSTEM_PROMPT }, ...saved];
+}
+
 function filesToRecord(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const f of vfs.snapshot()) out[f.path] = f.content;
@@ -35,7 +48,7 @@ export default function App() {
   const [files, setFiles] = useState<Record<string, string>>(() => filesToRecord());
   const [openTabs, setOpenTabs] = useState<string[]>(() => vfs.list().slice(0, 1));
   const [activeFile, setActiveFile] = useState<string>(() => vfs.list()[0] ?? "");
-  const [items, setItems] = useState<Item[]>([]);
+  const [items, setItems] = useState<Item[]>(() => initialChat()?.items ?? []);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentMode, setAgentMode] = useState(true);
@@ -45,7 +58,7 @@ export default function App() {
     { level: "system", text: "ANVIL terminal — JavaScript sandbox. Type `help`." },
   ]);
 
-  const historyRef = useRef<ChatMessage[]>([{ role: "system", content: SYSTEM_PROMPT }]);
+  const historyRef = useRef<ChatMessage[]>(restoreHistory());
   const abortRef = useRef<AbortController | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -66,6 +79,11 @@ export default function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  // Persist the conversation so a reload keeps context.
+  useEffect(() => {
+    saveChat({ history: historyRef.current, items });
+  }, [items]);
 
   const provider = getProvider(settings.providerId);
 
@@ -95,6 +113,40 @@ export default function App() {
       return next;
     });
   };
+
+  // ---- Project import / export / reset ------------------------------------
+  const exportProject = useCallback(() => {
+    const blob = new Blob([serializeProject(vfs.snapshot())], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "anvil-project.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    pushLog("system", `Exported ${vfs.list().length} files.`);
+  }, [pushLog]);
+
+  const importProject = useCallback(
+    async (file: File) => {
+      if (vfs.list().length && !window.confirm("Importing replaces your current files. Continue?")) return;
+      try {
+        const files = parseProject(await file.text());
+        vfs.replaceAll(files);
+        pushLog("system", `Imported ${files.length} files from ${file.name}.`);
+      } catch (e) {
+        pushLog("error", `Import failed — ${e instanceof Error ? e.message : String(e)}`);
+      }
+    },
+    [pushLog]
+  );
+
+  const resetProject = useCallback(() => {
+    if (!window.confirm("Reset to the starter files? Your current files will be replaced.")) return;
+    vfs.reset();
+    pushLog("system", "Project reset to the starter files.");
+  }, [pushLog]);
 
   // ---- Approval gate for agent writes -------------------------------------
   const approveWrite = useCallback(
@@ -213,6 +265,7 @@ export default function App() {
   const newChat = () => {
     historyRef.current = [{ role: "system", content: SYSTEM_PROMPT }];
     setItems([]);
+    clearChat();
   };
 
   // ---- Run code ------------------------------------------------------------
@@ -302,6 +355,9 @@ export default function App() {
           onSelect={openFile}
           onCreate={createFile}
           onDelete={deleteFile}
+          onExport={exportProject}
+          onImport={importProject}
+          onReset={resetProject}
         />
         <ChatPanel
           items={items}

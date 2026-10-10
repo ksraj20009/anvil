@@ -731,6 +731,20 @@ input[type="checkbox"] {
   color: var(--muted);
   padding: 7px 12px;
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.seg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 .seg.active {
   border-color: var(--accent-2);

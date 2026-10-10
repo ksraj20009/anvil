@@ -68,6 +68,14 @@ messages back, `eval`s the snippet, and terminates the worker on completion or t
 It has no DOM access. Non-JavaScript execution is out of scope for the client sandbox
 and is a roadmap item (WebContainers / Pyodide).
 
+## Persistence & portability
+
+Everything lives in the browser's `localStorage`: the project tree (`anvil.vfs.v1`),
+settings (`anvil.settings.v1`), and the conversation (`anvil.chat.v1`, via
+`src/lib/project.ts`). The explorer's toolbar exports the tree to `anvil-project.json`
+and imports it back; both round-trip through the pure `serializeProject` / `parseProject`
+functions, which are unit-tested.
+
 ## Model discovery
 
 `listModels` (`src/lib/llm.ts`) queries the provider's `/models` endpoint — directly with

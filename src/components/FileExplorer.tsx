@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 interface Props {
   files: string[];
@@ -6,11 +6,24 @@ interface Props {
   onSelect: (path: string) => void;
   onCreate: (path: string) => void;
   onDelete: (path: string) => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
+  onReset: () => void;
 }
 
-export function FileExplorer({ files, active, onSelect, onCreate, onDelete }: Props) {
+export function FileExplorer({
+  files,
+  active,
+  onSelect,
+  onCreate,
+  onDelete,
+  onExport,
+  onImport,
+  onReset,
+}: Props) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -26,9 +39,31 @@ export function FileExplorer({ files, active, onSelect, onCreate, onDelete }: Pr
     <aside className="explorer">
       <div className="pane-head">
         <span>Explorer</span>
-        <button className="icon-btn" title="New file" onClick={() => setAdding((v) => !v)}>
-          +
-        </button>
+        <div className="pane-actions">
+          <button className="icon-btn" title="Export project (.json)" onClick={onExport}>
+            ↓
+          </button>
+          <button className="icon-btn" title="Import project" onClick={() => fileRef.current?.click()}>
+            ↑
+          </button>
+          <button className="icon-btn" title="Reset to starter project" onClick={onReset}>
+            ↺
+          </button>
+          <button className="icon-btn" title="New file" onClick={() => setAdding((v) => !v)}>
+            +
+          </button>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onImport(f);
+            e.target.value = "";
+          }}
+        />
       </div>
 
       {adding && (

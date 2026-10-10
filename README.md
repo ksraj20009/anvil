@@ -22,6 +22,9 @@ sandboxed terminal.
   `write_file`, `delete_file`, `run_code`) and operates on a virtual project tree.
 - **Diff review** — every write the agent proposes is shown as a side-by-side Monaco
   diff you approve or reject before it lands. (Auto-apply can be enabled in Settings.)
+- **Portable projects** — export the workspace to a `.json` file and import it back, or
+  reset to the starter project. Everything lives in the browser, so nothing is uploaded.
+- **Persistent sessions** — your conversation and its context survive a page reload.
 - **Monaco workspace** — multi-file tabs, syntax highlighting for ~20 languages.
 - **Sandboxed terminal** — run JavaScript in a Web Worker with `console` capture and a
   timeout; plus `ls`, `cat`, `run`, `rm`, `echo`, `clear`.
@@ -104,6 +107,7 @@ src/
     agent.ts       The agentic loop (model → tools → model …)
     tools.ts       Tool definitions + executor over the VFS
     vfs.ts         Virtual file system (localStorage-backed)
+    project.ts     Project + chat (de)serialization (export/import, persistence)
     sandbox.ts     Web Worker code runner
     diff.ts        Change statistics for the review card
     markdown.ts    Sanitized markdown for the transcript

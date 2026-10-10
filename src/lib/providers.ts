@@ -20,6 +20,7 @@ export const PROVIDERS: ProviderConfig[] = [
     envVar: "OPENAI_API_KEY",
     docsUrl: "https://platform.openai.com/api-keys",
     defaultModel: "gpt-4o-mini",
+    color: "#10a37f",
     models: [
       { id: "gpt-4o", label: "GPT-4o" },
       { id: "gpt-4o-mini", label: "GPT-4o mini" },
@@ -37,6 +38,7 @@ export const PROVIDERS: ProviderConfig[] = [
     envVar: "ANTHROPIC_API_KEY",
     docsUrl: "https://console.anthropic.com/settings/keys",
     defaultModel: "claude-sonnet-4-20250514",
+    color: "#d97757",
     models: [
       { id: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
       { id: "claude-opus-4-20250514", label: "Claude Opus 4" },
@@ -53,6 +55,7 @@ export const PROVIDERS: ProviderConfig[] = [
     envVar: "XAI_API_KEY",
     docsUrl: "https://console.x.ai",
     defaultModel: "grok-3-mini",
+    color: "#9aa0a6",
     models: [
       { id: "grok-4", label: "Grok 4" },
       { id: "grok-3", label: "Grok 3" },

@@ -14,6 +14,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
   const [models, setModels] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
+  const [latency, setLatency] = useState<number | null>(null);
   const [nonce, setNonce] = useState(0);
 
   const provider = getProvider(draft.providerId);
@@ -31,10 +32,13 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
     let cancelled = false;
     setLoading(true);
     setModelError(null);
+    setLatency(null);
     const timer = setTimeout(async () => {
+      const started = performance.now();
       try {
         const list = await listModels({ provider, mode: draft.mode, apiKey: key });
         if (cancelled) return;
+        setLatency(Math.round(performance.now() - started));
         setModels(list);
         if (list.length === 0) setModelError("The provider returned no models for this key.");
         else if (!draft.model.trim()) setDraft((d) => ({ ...d, model: list[0] }));
@@ -101,6 +105,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 className={p.id === draft.providerId ? "seg active" : "seg"}
                 onClick={() => setProvider(p.id)}
               >
+                <span className="seg-dot" style={{ background: p.color }} />
                 {p.label}
               </button>
             ))}
@@ -184,7 +189,9 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 {modelError}
               </span>
             ) : models ? (
-              <span className="ok">{models.length} models available — pick one or type any id.</span>
+              <span className="ok">
+                ✓ {models.length} models{latency != null ? ` · ${latency}ms` : ""} — pick one or type any id.
+              </span>
             ) : (
               <span className="muted">
                 {draft.mode === "byok"
@@ -193,7 +200,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
               </span>
             )}
             <button className="btn ghost small" onClick={() => setNonce((n) => n + 1)} disabled={loading}>
-              Refresh
+              Test connection
             </button>
           </div>
         </div>

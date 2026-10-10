@@ -1,11 +1,8 @@
 import { useEffect, useRef } from "react";
 import { renderMarkdown } from "../lib/markdown";
+import type { TranscriptItem } from "../types";
 
-export type Item =
-  | { kind: "user"; text: string }
-  | { kind: "assistant"; text: string }
-  | { kind: "tool"; name: string; args: string; result?: string }
-  | { kind: "error"; text: string };
+export type Item = TranscriptItem;
 
 interface Props {
   items: Item[];

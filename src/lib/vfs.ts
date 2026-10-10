@@ -118,6 +118,13 @@ class VFS {
     this.emit();
   }
 
+  /** Restore the starter project. */
+  reset(): void {
+    this.files.clear();
+    for (const f of SEED) this.files.set(f.path, f.content);
+    this.emit();
+  }
+
   snapshot(): VFile[] {
     return [...this.files.entries()].map(([path, content]) => ({ path, content }));
   }

@@ -45,6 +45,8 @@ export interface ProviderConfig {
   envVar: string;
   docsUrl: string;
   defaultModel: string;
+  /** Accent colour for the provider mark in the UI. */
+  color: string;
   models: { id: string; label: string }[];
 }
 
@@ -73,3 +75,10 @@ export interface LogLine {
   level: "log" | "info" | "warn" | "error" | "system";
   text: string;
 }
+
+/** One row in the chat transcript. */
+export type TranscriptItem =
+  | { kind: "user"; text: string }
+  | { kind: "assistant"; text: string }
+  | { kind: "tool"; name: string; args: string; result?: string }
+  | { kind: "error"; text: string };
