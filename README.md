@@ -19,15 +19,25 @@ sandboxed terminal.
   then calls that provider's `/models` endpoint to load the models your key can actually
   use. Pick one from the dropdown or type any id.
 - **Agentic file editing** — the model gets real tools (`list_files`, `read_file`,
-  `write_file`, `delete_file`, `run_code`) and operates on a virtual project tree.
+  `write_file`, `delete_file`, `rename_file`, `search_files`, `run_code`) and operates on
+  a virtual project tree.
+- **Multi-language execution** — JavaScript runs in a Web Worker sandbox and **Python runs
+  via Pyodide** (CPython compiled to WebAssembly), loaded on first use. The agent can test
+  code in either language.
 - **Diff review** — every write the agent proposes is shown as a side-by-side Monaco
   diff you approve or reject before it lands. (Auto-apply can be enabled in Settings.)
 - **Portable projects** — export the workspace to a `.json` file and import it back, or
   reset to the starter project. Everything lives in the browser, so nothing is uploaded.
 - **Persistent sessions** — your conversation and its context survive a page reload.
 - **Monaco workspace** — multi-file tabs, syntax highlighting for ~20 languages.
-- **Sandboxed terminal** — run JavaScript in a Web Worker with `console` capture and a
-  timeout; plus `ls`, `cat`, `run`, `rm`, `echo`, `clear`.
+- **Sandboxed terminal** — run JavaScript or Python with output capture and a timeout;
+  plus `ls`, `cat`, `run`, `python`, `rm`, `echo`, `clear`.
+- **Multiple chats** — a sidebar of conversations, each with its own history, persisted
+  locally.
+- **Command palette** — press ⌘K / Ctrl K to run any action (new file, run, export, switch
+  theme, …).
+- **@-mentions** — type `@` in the prompt to attach a file's contents as context.
+- **Light & dark themes** — toggled from Settings or the palette.
 - **Streaming chat** — token-by-token responses for plain Q&A.
 - **Two key modes** — BYOK (key stays in the browser) or a hosted proxy (key stays on
   the server). See [Key handling](#key-handling).
@@ -93,9 +103,10 @@ In **hosted proxy** mode the same listing is served by the Edge Function
 
 ## Testing
 
-`npm test` runs the unit suite (vitest) covering key detection, model-list parsing and
-filtering, the OpenAI/Anthropic message converters, and diff statistics. `npm run
-typecheck` type-checks the app.
+`npm test` runs the unit suite (vitest, 44 tests) covering key detection, model-list
+parsing/filtering, the OpenAI/Anthropic message converters, @-mention parsing, session
+serialization, language detection, project/chat serialization, and diff statistics.
+`npm run typecheck` type-checks the app.
 
 ## Architecture
 
@@ -108,15 +119,19 @@ src/
     tools.ts       Tool definitions + executor over the VFS
     vfs.ts         Virtual file system (localStorage-backed)
     project.ts     Project + chat (de)serialization (export/import, persistence)
-    sandbox.ts     Web Worker code runner
+    sessions.ts    Multiple conversations + (de)serialization
+    mentions.ts    @-mention parsing + context expansion
+    sandbox.ts     Web Worker JavaScript runner
+    python.ts      Pyodide (CPython/WASM) runner
+    exec.ts        Language dispatch: JavaScript vs Python
     diff.ts        Change statistics for the review card
     markdown.ts    Sanitized markdown for the transcript
     storage.ts     Settings persistence
   components/      FileExplorer · EditorPanel · ChatPanel · TerminalPanel
-                   SettingsModal · DiffReview
+                   SettingsModal · DiffReview · SessionList · CommandPalette
   App.tsx          Orchestration: state, agent run, approval gate, terminal
 api/chat.ts        Vercel Edge Function — the hosted proxy (chat + model list)
-tests/             vitest unit tests (key detection, model parsing, converters, diff)
+tests/             vitest unit tests (44)
 ```
 
 The agent runs a bounded loop (`maxSteps`, default 8): ask the model for the next step;
@@ -137,11 +152,11 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a deeper walkthrough.
 
 ## Roadmap
 
-- WebContainer / Pyodide runtime for multi-language execution
-- Persistent projects (import/export a zip, sync to a repo)
+- WebContainers for a full Node/npm runtime in the browser
+- Zip import/export and two-way sync with a GitHub repo
 - MCP tool support and custom tool definitions
-- Streaming tool calls
-- File diffs applied inline in the editor
+- Streaming tool calls and inline (non-modal) diffs
+- Vision input (screenshots/designs) and voice prompts
 
 ## Tech
 

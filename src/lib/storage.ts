@@ -1,9 +1,11 @@
 import type { Settings } from "../types";
 import { PROVIDERS } from "./providers";
 import { parseChat, serializeChat, type ChatState } from "./project";
+import { parseSessions, serializeSessions, type SessionsState } from "./sessions";
 
 const SETTINGS_KEY = "anvil.settings.v1";
 const CHAT_KEY = "anvil.chat.v1";
+const SESSIONS_KEY = "anvil.sessions.v1";
 
 export const DEFAULT_SETTINGS: Settings = {
   providerId: "openai",
@@ -12,6 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKeys: {},
   autoApply: false,
   temperature: 0.2,
+  theme: "dark",
 };
 
 export function loadSettings(): Settings {
@@ -52,6 +55,22 @@ export function saveChat(state: ChatState): void {
 export function clearChat(): void {
   try {
     localStorage.removeItem(CHAT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadSessions(): SessionsState | null {
+  try {
+    return parseSessions(localStorage.getItem(SESSIONS_KEY));
+  } catch {
+    return null;
+  }
+}
+
+export function saveSessions(state: SessionsState): void {
+  try {
+    localStorage.setItem(SESSIONS_KEY, serializeSessions(state));
   } catch {
     /* ignore */
   }

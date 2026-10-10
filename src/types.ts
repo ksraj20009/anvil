@@ -60,6 +60,7 @@ export interface Settings {
   apiKeys: Record<string, string>;
   autoApply: boolean;
   temperature: number;
+  theme: "dark" | "light";
 }
 
 export interface PendingChange {

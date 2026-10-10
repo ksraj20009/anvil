@@ -1,6 +1,6 @@
 import type { ToolDef } from "../types";
 import { vfs } from "./vfs";
-import { runInSandbox } from "./sandbox";
+import { runCode } from "./exec";
 
 /**
  * The agent's toolbox. These are advertised to the model and executed against
@@ -45,12 +45,47 @@ export const AGENT_TOOLS: ToolDef[] = [
     },
   },
   {
-    name: "run_code",
-    description:
-      "Execute a JavaScript snippet in a sandboxed worker and return its console output. Use this to test code you write.",
+    name: "rename_file",
+    description: "Rename or move a file within the project.",
     parameters: {
       type: "object",
-      properties: { code: { type: "string", description: "JavaScript to execute." } },
+      properties: {
+        from: { type: "string", description: "Existing file path." },
+        to: { type: "string", description: "New file path." },
+      },
+      required: ["from", "to"],
+    },
+  },
+  {
+    name: "search_files",
+    description:
+      "Search the project's file contents with a JavaScript regular expression. Returns matching lines as `path:line: text`. Use this to find code across files.",
+    parameters: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "A regular expression to match (case-insensitive)." },
+        path: {
+          type: "string",
+          description: "Optional substring filter to restrict which file paths are searched.",
+        },
+      },
+      required: ["pattern"],
+    },
+  },
+  {
+    name: "run_code",
+    description:
+      "Execute code in a sandbox and return its console/stdout output. Supports 'javascript' (Web Worker) and 'python' (Pyodide). Use this to test the code you write.",
+    parameters: {
+      type: "object",
+      properties: {
+        code: { type: "string", description: "The source code to execute." },
+        language: {
+          type: "string",
+          enum: ["javascript", "python"],
+          description: "Which runtime to use. Defaults to javascript.",
+        },
+      },
       required: ["code"],
     },
   },
@@ -100,8 +135,41 @@ export async function executeTool(
       vfs.delete(path);
       return `Deleted ${path}.`;
     }
+    case "rename_file": {
+      const from = String(args.from ?? "");
+      const to = String(args.to ?? "");
+      if (!vfs.exists(from)) return `Error: no such file: ${from}`;
+      if (vfs.exists(to)) return `Error: ${to} already exists.`;
+      vfs.rename(from, to);
+      return `Renamed ${from} → ${to}.`;
+    }
+    case "search_files": {
+      const pattern = String(args.pattern ?? "");
+      const filter = args.path ? String(args.path) : "";
+      let re: RegExp;
+      try {
+        re = new RegExp(pattern, "i");
+      } catch {
+        return "Error: that was not a valid regular expression.";
+      }
+      const hits: string[] = [];
+      for (const p of vfs.list()) {
+        if (filter && !p.includes(filter)) continue;
+        const content = vfs.read(p) ?? "";
+        const lines = content.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          if (re.test(lines[i])) {
+            hits.push(`${p}:${i + 1}: ${lines[i].trim().slice(0, 200)}`);
+            if (hits.length >= 200) break;
+          }
+        }
+        if (hits.length >= 200) break;
+      }
+      return hits.length ? hits.join("\n") : "No matches.";
+    }
     case "run_code": {
-      const r = await runInSandbox(String(args.code ?? ""));
+      const language = String(args.language ?? "javascript");
+      const r = await runCode(String(args.code ?? ""), language);
       const out = r.logs.map((l) => `[${l.level}] ${l.text}`).join("\n");
       return (out || "(no output)") + (r.error ? `\nExecution error: ${r.error}` : "");
     }

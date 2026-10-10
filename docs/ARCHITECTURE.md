@@ -65,8 +65,22 @@ There is no real filesystem in the browser; this is the project.
 
 `src/lib/sandbox.ts` builds a Web Worker from a Blob, overrides `console.*` to post
 messages back, `eval`s the snippet, and terminates the worker on completion or timeout.
-It has no DOM access. Non-JavaScript execution is out of scope for the client sandbox
-and is a roadmap item (WebContainers / Pyodide).
+It has no DOM access. Python is handled separately by Pyodide (see below).
+
+## Multi-language execution
+
+JavaScript runs in a Web Worker (`sandbox.ts`). Python runs in **Pyodide** — CPython
+compiled to WebAssembly — loaded lazily from a CDN on first use (`python.ts`), with
+stdout/stderr captured. `exec.ts` dispatches by file extension or an explicit language.
+The `run_code` tool and the terminal both go through it.
+
+## Sessions, mentions, and the palette
+
+`src/lib/sessions.ts` holds multiple conversations; the active one's history/transcript
+live in the UI and are flushed back to the store on every change (`anvil.sessions.v1`).
+`src/lib/mentions.ts` parses `@path` references and appends the referenced files to the
+prompt as `<file>` blocks. The command palette (`components/CommandPalette.tsx`) exposes
+every top-level action under ⌘K / Ctrl K.
 
 ## Persistence & portability
 

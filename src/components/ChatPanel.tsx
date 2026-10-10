@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdown } from "../lib/markdown";
+import { suggestMentions } from "../lib/mentions";
 import type { TranscriptItem } from "../types";
 
 export type Item = TranscriptItem;
@@ -13,6 +14,7 @@ interface Props {
   busy: boolean;
   agentMode: boolean;
   setAgentMode: (v: boolean) => void;
+  files: string[];
 }
 
 function prettyArgs(args: string): string {
@@ -27,6 +29,7 @@ function toolSummary(name: string, args: string): string {
   try {
     const a = JSON.parse(args);
     if (a.path) return `${name}(${a.path})`;
+    if (a.pattern) return `${name}(/${a.pattern}/)`;
   } catch {
     /* ignore */
   }
@@ -42,12 +45,32 @@ export function ChatPanel({
   busy,
   agentMode,
   setAgentMode,
+  files,
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [items]);
+
+  // Detect a trailing "@fragment" to offer file suggestions.
+  const mentionFragment = useMemo(() => {
+    const m = /(?:^|\s)@([A-Za-z0-9_./-]*)$/.exec(input);
+    return m ? m[1] : null;
+  }, [input]);
+
+  const suggestions = useMemo(
+    () => (mentionFragment !== null ? suggestMentions(mentionFragment, files) : []),
+    [mentionFragment, files]
+  );
+
+  const insertMention = (path: string) => {
+    setInput(input.replace(/@([A-Za-z0-9_./-]*)$/, `@${path} `));
+    taRef.current?.focus();
+  };
+
+  const menuOpen = mentionFragment !== null && suggestions.length > 0;
 
   return (
     <section className="chat">
@@ -70,8 +93,9 @@ export function ChatPanel({
             <p>A web-based, provider-agnostic AI coding agent.</p>
             <ul>
               <li>Turn on <strong>Agent</strong> and ask it to build or refactor files.</li>
+              <li>Type <strong>@</strong> to attach a file's contents to your prompt.</li>
+              <li>Press <strong>⌘K</strong> / <strong>Ctrl K</strong> for the command palette.</li>
               <li>Every file write is shown as a diff you approve.</li>
-              <li>Run JavaScript in the sandboxed terminal.</li>
             </ul>
           </div>
         )}
@@ -123,28 +147,52 @@ export function ChatPanel({
         <div ref={endRef} />
       </div>
 
-      <div className="composer">
-        <textarea
-          value={input}
-          placeholder={agentMode ? "Ask ANVIL to build, refactor or fix…" : "Ask ANVIL anything…"}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          rows={3}
-        />
-        {busy ? (
-          <button className="btn danger" onClick={onStop}>
-            Stop
-          </button>
-        ) : (
-          <button className="btn primary" onClick={onSend} disabled={!input.trim()}>
-            Send
-          </button>
+      <div className="composer-wrap">
+        {menuOpen && (
+          <ul className="mention-menu">
+            {suggestions.map((f, i) => (
+              <li
+                key={f}
+                className={i === 0 ? "mention-item active" : "mention-item"}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  insertMention(f);
+                }}
+              >
+                {f}
+              </li>
+            ))}
+          </ul>
         )}
+        <div className="composer">
+          <textarea
+            ref={taRef}
+            value={input}
+            placeholder={agentMode ? "Ask ANVIL to build, refactor or fix…  (@ to attach a file)" : "Ask ANVIL anything…"}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (menuOpen && (e.key === "Enter" || e.key === "Tab")) {
+                e.preventDefault();
+                insertMention(suggestions[0]);
+                return;
+              }
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSend();
+              }
+            }}
+            rows={3}
+          />
+          {busy ? (
+            <button className="btn danger" onClick={onStop}>
+              Stop
+            </button>
+          ) : (
+            <button className="btn primary" onClick={onSend} disabled={!input.trim()}>
+              Send
+            </button>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -8,6 +8,7 @@ interface Props {
   onClose: (path: string) => void;
   onChange: (path: string, value: string) => void;
   onRun: () => void;
+  theme: "dark" | "light";
 }
 
 const LANG: Record<string, string> = {
@@ -49,6 +50,7 @@ export function EditorPanel({
   onClose,
   onChange,
   onRun,
+  theme,
 }: Props) {
   return (
     <section className="editor">
@@ -82,7 +84,7 @@ export function EditorPanel({
       <div className="monaco-wrap">
         {active ? (
           <Editor
-            theme="vs-dark"
+            theme={theme === "light" ? "vs" : "vs-dark"}
             path={active}
             language={languageFor(active)}
             value={files[active] ?? ""}

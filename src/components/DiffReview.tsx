@@ -6,6 +6,7 @@ interface Props {
   change: PendingChange;
   onApply: () => void;
   onReject: () => void;
+  theme: "dark" | "light";
 }
 
 const LANG: Record<string, string> = {
@@ -24,7 +25,7 @@ function languageFor(path: string): string {
   return LANG[path.split(".").pop()?.toLowerCase() ?? ""] ?? "plaintext";
 }
 
-export function DiffReview({ change, onApply, onReject }: Props) {
+export function DiffReview({ change, onApply, onReject, theme }: Props) {
   const stat = diffStat(change.before, change.after);
   const isNew = change.before.length === 0;
 
@@ -49,7 +50,7 @@ export function DiffReview({ change, onApply, onReject }: Props) {
 
         <div className="diff-wrap">
           <DiffEditor
-            theme="vs-dark"
+            theme={theme === "light" ? "vs" : "vs-dark"}
             language={languageFor(change.path)}
             original={change.before}
             modified={change.after}

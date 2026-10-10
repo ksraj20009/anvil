@@ -1,41 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMessage, LogLine, PendingChange, Settings } from "./types";
 import { vfs } from "./lib/vfs";
-import { loadSettings, saveSettings, loadChat, saveChat, clearChat } from "./lib/storage";
+import { loadSettings, saveSettings, loadSessions, saveSessions } from "./lib/storage";
 import { serializeProject, parseProject } from "./lib/project";
 import { getProvider } from "./lib/providers";
 import { streamText } from "./lib/llm";
 import { runAgentTurn } from "./lib/agent";
-import { runInSandbox } from "./lib/sandbox";
+import { runCode, languageOf } from "./lib/exec";
+import { expandMentions } from "./lib/mentions";
+import { newSession, titleFor, type SessionsState } from "./lib/sessions";
 import { FileExplorer } from "./components/FileExplorer";
 import { EditorPanel } from "./components/EditorPanel";
 import { ChatPanel, type Item } from "./components/ChatPanel";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { SettingsModal } from "./components/SettingsModal";
 import { DiffReview } from "./components/DiffReview";
+import { SessionList } from "./components/SessionList";
+import { CommandPalette, type Command } from "./components/CommandPalette";
 
 const SYSTEM_PROMPT = `You are ANVIL, an AI coding agent running inside a web application.
 You operate on the user's virtual project through tools:
-- list_files, read_file, write_file, delete_file — manage project files
-- run_code — execute JavaScript in a sandbox to test your work
+- list_files, read_file, write_file, delete_file, rename_file — manage project files
+- search_files — find code across the project with a regular expression
+- run_code — execute JavaScript or Python in a sandbox to test your work
 
 Guidelines:
 - When asked to build, change, or fix something, use the tools to make the change. Do not just describe it.
 - write_file takes the COMPLETE new contents of a file, not a patch.
+- Test non-trivial logic with run_code before declaring it done.
 - Keep files small and self-contained where reasonable. Prefer clear, working code.
 - After acting, give a short summary in markdown of what you changed.`;
-
-let _chatCache: ReturnType<typeof loadChat> | undefined;
-function initialChat() {
-  if (_chatCache === undefined) _chatCache = loadChat();
-  return _chatCache;
-}
-
-function restoreHistory(): ChatMessage[] {
-  const saved = initialChat()?.history ?? [];
-  if (saved.length && saved[0].role === "system") return saved;
-  return [{ role: "system", content: SYSTEM_PROMPT }, ...saved];
-}
 
 function filesToRecord(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -43,27 +37,52 @@ function filesToRecord(): Record<string, string> {
   return out;
 }
 
+function initialSessions(): SessionsState {
+  const loaded = loadSessions();
+  if (loaded) return loaded;
+  const s = newSession(SYSTEM_PROMPT);
+  return { activeId: s.id, sessions: [s] };
+}
+
+function withSystem(history: ChatMessage[]): ChatMessage[] {
+  return history.length && history[0].role === "system"
+    ? history
+    : [{ role: "system", content: SYSTEM_PROMPT }, ...history];
+}
+
 export default function App() {
+  const bootRef = useRef<SessionsState | undefined>(undefined);
+  if (!bootRef.current) bootRef.current = initialSessions();
+  const boot = bootRef.current;
+  const bootSession = boot.sessions.find((s) => s.id === boot.activeId) ?? boot.sessions[0];
+
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [files, setFiles] = useState<Record<string, string>>(() => filesToRecord());
   const [openTabs, setOpenTabs] = useState<string[]>(() => vfs.list().slice(0, 1));
   const [activeFile, setActiveFile] = useState<string>(() => vfs.list()[0] ?? "");
-  const [items, setItems] = useState<Item[]>(() => initialChat()?.items ?? []);
+  const [sessionsState, setSessionsState] = useState<SessionsState>(boot);
+  const [items, setItems] = useState<Item[]>(bootSession.items);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentMode, setAgentMode] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
   const [logs, setLogs] = useState<LogLine[]>([
-    { level: "system", text: "ANVIL terminal — JavaScript sandbox. Type `help`." },
+    { level: "system", text: "ANVIL terminal — JavaScript + Python sandbox. Type `help`." },
   ]);
 
-  const historyRef = useRef<ChatMessage[]>(restoreHistory());
+  const historyRef = useRef<ChatMessage[]>(withSystem(bootSession.history));
   const abortRef = useRef<AbortController | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const sessionsRef = useRef(sessionsState);
+  sessionsRef.current = sessionsState;
 
-  // Keep the file view in sync with the VFS.
+  const activeSession =
+    sessionsState.sessions.find((s) => s.id === sessionsState.activeId) ?? sessionsState.sessions[0];
+
+  // ---- File view sync ------------------------------------------------------
   const refresh = useCallback(() => {
     const rec = filesToRecord();
     setFiles(rec);
@@ -80,9 +99,24 @@ export default function App() {
     saveSettings(settings);
   }, [settings]);
 
-  // Persist the conversation so a reload keeps context.
   useEffect(() => {
-    saveChat({ history: historyRef.current, items });
+    document.documentElement.dataset.theme = settings.theme;
+  }, [settings.theme]);
+
+  // Persist the active session whenever the transcript changes.
+  useEffect(() => {
+    setSessionsState((st) => {
+      const next: SessionsState = {
+        activeId: st.activeId,
+        sessions: st.sessions.map((s) =>
+          s.id === st.activeId
+            ? { ...s, items, history: historyRef.current, title: titleFor(items), updatedAt: Date.now() }
+            : s
+        ),
+      };
+      saveSessions(next);
+      return next;
+    });
   }, [items]);
 
   const provider = getProvider(settings.providerId);
@@ -100,12 +134,8 @@ export default function App() {
     vfs.create(path, "");
     openFile(path);
   };
-  const deleteFile = (path: string) => {
-    vfs.delete(path);
-  };
-  const editFile = (path: string, value: string) => {
-    vfs.write(path, value);
-  };
+  const deleteFile = (path: string) => vfs.delete(path);
+  const editFile = (path: string, value: string) => vfs.write(path, value);
   const closeTab = (path: string) => {
     setOpenTabs((tabs) => {
       const next = tabs.filter((t) => t !== path);
@@ -132,9 +162,9 @@ export default function App() {
     async (file: File) => {
       if (vfs.list().length && !window.confirm("Importing replaces your current files. Continue?")) return;
       try {
-        const files = parseProject(await file.text());
-        vfs.replaceAll(files);
-        pushLog("system", `Imported ${files.length} files from ${file.name}.`);
+        const parsed = parseProject(await file.text());
+        vfs.replaceAll(parsed);
+        pushLog("system", `Imported ${parsed.length} files from ${file.name}.`);
       } catch (e) {
         pushLog("error", `Import failed — ${e instanceof Error ? e.message : String(e)}`);
       }
@@ -142,13 +172,78 @@ export default function App() {
     [pushLog]
   );
 
+  const pickImport = useCallback(() => {
+    const el = document.createElement("input");
+    el.type = "file";
+    el.accept = ".json,application/json";
+    el.onchange = () => {
+      const f = el.files?.[0];
+      if (f) void importProject(f);
+    };
+    el.click();
+  }, [importProject]);
+
   const resetProject = useCallback(() => {
     if (!window.confirm("Reset to the starter files? Your current files will be replaced.")) return;
     vfs.reset();
     pushLog("system", "Project reset to the starter files.");
   }, [pushLog]);
 
-  // ---- Approval gate for agent writes -------------------------------------
+  // ---- Sessions ------------------------------------------------------------
+  const flushActive = () =>
+    sessionsRef.current.sessions.map((s) =>
+      s.id === sessionsRef.current.activeId
+        ? { ...s, items, history: historyRef.current, title: titleFor(items) }
+        : s
+    );
+
+  const switchSession = (id: string) => {
+    if (id === sessionsRef.current.activeId) return;
+    const sessions = flushActive();
+    const target = sessions.find((s) => s.id === id);
+    if (!target) return;
+    historyRef.current = withSystem(target.history);
+    setItems(target.items);
+    const next: SessionsState = { activeId: id, sessions };
+    saveSessions(next);
+    setSessionsState(next);
+  };
+
+  const newChat = () => {
+    const sessions = flushActive();
+    const s = newSession(SYSTEM_PROMPT);
+    historyRef.current = s.history;
+    setItems([]);
+    const next: SessionsState = { activeId: s.id, sessions: [s, ...sessions] };
+    saveSessions(next);
+    setSessionsState(next);
+  };
+
+  const deleteSession = (id: string) => {
+    const st = sessionsRef.current;
+    let sessions = st.sessions.filter((s) => s.id !== id);
+    if (sessions.length === 0) {
+      const s = newSession(SYSTEM_PROMPT);
+      sessions = [s];
+      historyRef.current = s.history;
+      setItems([]);
+      const next: SessionsState = { activeId: s.id, sessions };
+      saveSessions(next);
+      setSessionsState(next);
+      return;
+    }
+    let activeId = st.activeId;
+    if (activeId === id) {
+      activeId = sessions[0].id;
+      historyRef.current = withSystem(sessions[0].history);
+      setItems(sessions[0].items);
+    }
+    const next: SessionsState = { activeId, sessions };
+    saveSessions(next);
+    setSessionsState(next);
+  };
+
+  // ---- Approval gate -------------------------------------------------------
   const approveWrite = useCallback(
     (path: string, before: string, after: string) =>
       new Promise<boolean>((resolve) => {
@@ -156,13 +251,7 @@ export default function App() {
           resolve(true);
           return;
         }
-        setPendingChange({
-          id: Math.random().toString(36).slice(2),
-          path,
-          before,
-          after,
-          resolve,
-        });
+        setPendingChange({ id: Math.random().toString(36).slice(2), path, before, after, resolve });
       }),
     []
   );
@@ -177,10 +266,7 @@ export default function App() {
     if (settings.mode === "byok" && !apiKey) {
       setItems((it) => [
         ...it,
-        {
-          kind: "error",
-          text: `No API key for ${p.label}. Open Settings to add one, or switch to the hosted proxy.`,
-        },
+        { kind: "error", text: `No API key for ${p.label}. Open Settings to add one, or switch to the hosted proxy.` },
       ]);
       setSettingsOpen(true);
       return;
@@ -188,7 +274,7 @@ export default function App() {
 
     setInput("");
     setItems((it) => [...it, { kind: "user", text }]);
-    historyRef.current.push({ role: "user", content: text });
+    historyRef.current.push({ role: "user", content: expandMentions(text, files) });
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -211,10 +297,8 @@ export default function App() {
           ctx: { approveWrite },
           signal: controller.signal,
           cb: {
-            onAssistantText: (t) =>
-              setItems((it) => [...it, { kind: "assistant", text: t }]),
-            onToolStart: (name, args) =>
-              setItems((it) => [...it, { kind: "tool", name, args }]),
+            onAssistantText: (t) => setItems((it) => [...it, { kind: "assistant", text: t }]),
+            onToolStart: (name, args) => setItems((it) => [...it, { kind: "tool", name, args }]),
             onToolResult: (name, result) =>
               setItems((it) => {
                 const copy = [...it];
@@ -262,25 +346,19 @@ export default function App() {
     setBusy(false);
   };
 
-  const newChat = () => {
-    historyRef.current = [{ role: "system", content: SYSTEM_PROMPT }];
-    setItems([]);
-    clearChat();
-  };
-
   // ---- Run code ------------------------------------------------------------
   const runPath = useCallback(
     async (path: string) => {
       const code = files[path] ?? vfs.read(path) ?? "";
-      const ext = path.split(".").pop()?.toLowerCase() ?? "";
-      if (!["js", "mjs", "cjs"].includes(ext)) {
-        pushLog("warn", `Only JavaScript runs in the browser sandbox (got .${ext || "?"}).`);
+      const lang = languageOf(path);
+      if (lang === "unknown") {
+        pushLog("warn", `Don't know how to run "${path}". Use a .js or .py file.`);
         return;
       }
-      pushLog("log", `run ${path}`);
-      const r = await runInSandbox(code);
+      pushLog("log", `run ${path}  (${lang})`);
+      const r = await runCode(code, lang);
       r.logs.forEach((x) => pushLog(x.level, x.text));
-      if (r.error) pushLog("error", r.error);
+      if (r.error && !r.logs.some((l) => l.level === "error")) pushLog("error", r.error);
       pushLog("system", `finished in ${r.durationMs}ms`);
     },
     [files, pushLog]
@@ -293,7 +371,7 @@ export default function App() {
       const arg = rest.join(" ");
       switch (name) {
         case "help":
-          pushLog("system", "commands: ls · cat <file> · run <file> · rm <file> · echo <text> · clear · help");
+          pushLog("system", "commands: ls · cat <file> · run <file> · python <file> · rm <file> · echo <text> · clear · help");
           break;
         case "ls":
           pushLog("system", vfs.list().join("  ") || "(empty)");
@@ -305,6 +383,8 @@ export default function App() {
         }
         case "run":
         case "node":
+        case "python":
+        case "py":
           void runPath(arg);
           break;
         case "rm":
@@ -326,6 +406,46 @@ export default function App() {
     [pushLog, runPath]
   );
 
+  // ---- Command palette -----------------------------------------------------
+  const commands: Command[] = [
+    { id: "new-chat", label: "New chat", run: newChat },
+    {
+      id: "new-file",
+      label: "New file",
+      run: () => {
+        const p = window.prompt("New file path", "src/untitled.js");
+        if (p) createFile(p);
+      },
+    },
+    { id: "run", label: "Run active file", run: () => activeFile && void runPath(activeFile) },
+    { id: "export", label: "Export project (.json)", run: exportProject },
+    { id: "import", label: "Import project…", run: pickImport },
+    { id: "reset", label: "Reset project to starter", run: resetProject },
+    {
+      id: "theme",
+      label: `Switch to ${settings.theme === "dark" ? "light" : "dark"} theme`,
+      run: () => setSettings((s) => ({ ...s, theme: s.theme === "dark" ? "light" : "dark" })),
+    },
+    { id: "agent", label: `Turn agent mode ${agentMode ? "off" : "on"}`, run: () => setAgentMode((v) => !v) },
+    { id: "settings", label: "Open settings", run: () => setSettingsOpen(true) },
+    { id: "clear-term", label: "Clear terminal", run: () => setLogs([]) },
+  ];
+
+  // ---- Keyboard shortcuts --------------------------------------------------
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      } else if (e.key === "Escape") {
+        setPaletteOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const modelChip = useMemo(() => `${provider.label} · ${settings.model}`, [provider, settings.model]);
 
   return (
@@ -336,12 +456,12 @@ export default function App() {
           <span className="brand-sub">AI coding agent</span>
         </div>
         <div className="top-actions">
+          <button className="btn ghost" onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl/⌘ K)">
+            ⌘K
+          </button>
           <span className="model-chip" title="Active provider and model">
             {modelChip}
           </span>
-          <button className="btn ghost" onClick={newChat}>
-            New chat
-          </button>
           <button className="btn ghost" onClick={() => setSettingsOpen(true)}>
             Settings
           </button>
@@ -349,16 +469,25 @@ export default function App() {
       </header>
 
       <div className="workspace">
-        <FileExplorer
-          files={vfs.list()}
-          active={activeFile}
-          onSelect={openFile}
-          onCreate={createFile}
-          onDelete={deleteFile}
-          onExport={exportProject}
-          onImport={importProject}
-          onReset={resetProject}
-        />
+        <div className="left">
+          <SessionList
+            sessions={sessionsState.sessions}
+            activeId={sessionsState.activeId}
+            onSelect={switchSession}
+            onNew={newChat}
+            onDelete={deleteSession}
+          />
+          <FileExplorer
+            files={vfs.list()}
+            active={activeFile}
+            onSelect={openFile}
+            onCreate={createFile}
+            onDelete={deleteFile}
+            onExport={exportProject}
+            onImport={importProject}
+            onReset={resetProject}
+          />
+        </div>
         <ChatPanel
           items={items}
           input={input}
@@ -368,6 +497,7 @@ export default function App() {
           busy={busy}
           agentMode={agentMode}
           setAgentMode={setAgentMode}
+          files={vfs.list()}
         />
         <div className="right">
           <EditorPanel
@@ -378,22 +508,22 @@ export default function App() {
             onClose={closeTab}
             onChange={editFile}
             onRun={() => activeFile && void runPath(activeFile)}
+            theme={settings.theme}
           />
           <TerminalPanel logs={logs} onCommand={onTerminalCommand} />
         </div>
       </div>
 
       {settingsOpen && (
-        <SettingsModal
-          settings={settings}
-          onSave={setSettings}
-          onClose={() => setSettingsOpen(false)}
-        />
+        <SettingsModal settings={settings} onSave={setSettings} onClose={() => setSettingsOpen(false)} />
       )}
+
+      {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
 
       {pendingChange && (
         <DiffReview
           change={pendingChange}
+          theme={settings.theme}
           onApply={() => {
             pendingChange.resolve(true);
             setPendingChange(null);

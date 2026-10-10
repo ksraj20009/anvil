@@ -219,6 +219,24 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
         </p>
 
         <div className="field">
+          <label>Appearance</label>
+          <div className="segmented">
+            <button
+              className={draft.theme === "dark" ? "seg active" : "seg"}
+              onClick={() => setDraft((d) => ({ ...d, theme: "dark" }))}
+            >
+              Dark
+            </button>
+            <button
+              className={draft.theme === "light" ? "seg active" : "seg"}
+              onClick={() => setDraft((d) => ({ ...d, theme: "light" }))}
+            >
+              Light
+            </button>
+          </div>
+        </div>
+
+        <div className="field">
           <label>Temperature — {draft.temperature.toFixed(1)}</label>
           <input
             type="range"
