@@ -691,6 +691,34 @@ input[type="checkbox"] {
   font-family: var(--mono);
   color: #b9c6d6;
 }
+.field-hint.ok {
+  color: var(--add);
+}
+.model-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  min-height: 22px;
+}
+.model-status .muted {
+  color: var(--muted);
+}
+.model-status .ok {
+  color: var(--add);
+}
+.model-status .err {
+  color: var(--rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 72%;
+}
+.btn.small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
 .segmented {
   display: flex;
   gap: 6px;

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Settings } from "../types";
-import { PROVIDERS, getProvider } from "../lib/providers";
+import { PROVIDERS, getProvider, detectProviderFromKey } from "../lib/providers";
+import { listModels } from "../lib/llm";
 
 interface Props {
   settings: Settings;
@@ -10,11 +11,75 @@ interface Props {
 
 export function SettingsModal({ settings, onSave, onClose }: Props) {
   const [draft, setDraft] = useState<Settings>({ ...settings, apiKeys: { ...settings.apiKeys } });
+  const [models, setModels] = useState<string[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
+
   const provider = getProvider(draft.providerId);
+  const key = draft.apiKeys[provider.id] ?? "";
+  const detected = detectProviderFromKey(key);
+
+  // Load the live model list whenever the provider, mode, or key changes.
+  useEffect(() => {
+    if (draft.mode === "byok" && !key.trim()) {
+      setModels(null);
+      setModelError(null);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setModelError(null);
+    const timer = setTimeout(async () => {
+      try {
+        const list = await listModels({ provider, mode: draft.mode, apiKey: key });
+        if (cancelled) return;
+        setModels(list);
+        if (list.length === 0) setModelError("The provider returned no models for this key.");
+        else if (!draft.model.trim()) setDraft((d) => ({ ...d, model: list[0] }));
+      } catch (e) {
+        if (!cancelled) {
+          setModels(null);
+          setModelError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.providerId, draft.mode, key, nonce]);
+
+  const options = useMemo(
+    () => (models && models.length ? models : provider.models.map((m) => m.id)),
+    [models, provider]
+  );
 
   const setProvider = (id: string) => {
     const p = getProvider(id);
     setDraft((d) => ({ ...d, providerId: id, model: p.defaultModel }));
+    setModels(null);
+    setModelError(null);
+  };
+
+  const onKeyChange = (value: string) => {
+    const guess = detectProviderFromKey(value);
+    setDraft((d) => {
+      if (guess && guess !== d.providerId) {
+        const p = getProvider(guess);
+        return {
+          ...d,
+          providerId: guess,
+          model: p.defaultModel,
+          apiKeys: { ...d.apiKeys, [guess]: value },
+        };
+      }
+      return { ...d, apiKeys: { ...d.apiKeys, [d.providerId]: value } };
+    });
   };
 
   return (
@@ -40,24 +105,10 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="field">
-          <label>Model</label>
-          <input
-            list="anvil-models"
-            value={draft.model}
-            onChange={(e) => setDraft((d) => ({ ...d, model: e.target.value }))}
-            placeholder={provider.defaultModel}
-          />
-          <datalist id="anvil-models">
-            {provider.models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </datalist>
-          <p className="field-hint">Any model id works — pick a suggestion or type your own.</p>
+          <p className="field-hint">
+            Pick a provider, or just paste an API key below — ANVIL detects the provider
+            from the key automatically.
+          </p>
         </div>
 
         <div className="field">
@@ -83,15 +134,15 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
             <label>{provider.keyLabel}</label>
             <input
               type="password"
-              value={draft.apiKeys[provider.id] ?? ""}
+              value={key}
               placeholder={provider.keyPlaceholder}
-              onChange={(e) =>
-                setDraft((d) => ({
-                  ...d,
-                  apiKeys: { ...d.apiKeys, [provider.id]: e.target.value },
-                }))
-              }
+              onChange={(e) => onKeyChange(e.target.value)}
             />
+            {detected && detected === draft.providerId && (
+              <p className="field-hint ok">
+                ✓ Recognised as a {provider.label} key — models load automatically.
+              </p>
+            )}
             <p className="field-hint">
               Stored only in this browser (localStorage) and sent directly to {provider.label}.
               Get a key at{" "}
@@ -111,6 +162,41 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
             </p>
           </div>
         )}
+
+        <div className="field">
+          <label>Model</label>
+          <input
+            list="anvil-models"
+            value={draft.model}
+            onChange={(e) => setDraft((d) => ({ ...d, model: e.target.value }))}
+            placeholder={provider.defaultModel}
+          />
+          <datalist id="anvil-models">
+            {options.map((id) => (
+              <option key={id} value={id} />
+            ))}
+          </datalist>
+          <div className="model-status">
+            {loading ? (
+              <span className="muted">Loading models…</span>
+            ) : modelError ? (
+              <span className="err" title={modelError}>
+                {modelError}
+              </span>
+            ) : models ? (
+              <span className="ok">{models.length} models available — pick one or type any id.</span>
+            ) : (
+              <span className="muted">
+                {draft.mode === "byok"
+                  ? "Enter an API key to load this account's models."
+                  : "Using suggested models."}
+              </span>
+            )}
+            <button className="btn ghost small" onClick={() => setNonce((n) => n + 1)} disabled={loading}>
+              Refresh
+            </button>
+          </div>
+        </div>
 
         <div className="field row">
           <label>Auto-apply file writes</label>

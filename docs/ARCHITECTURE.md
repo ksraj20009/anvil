@@ -68,6 +68,14 @@ messages back, `eval`s the snippet, and terminates the worker on completion or t
 It has no DOM access. Non-JavaScript execution is out of scope for the client sandbox
 and is a roadmap item (WebContainers / Pyodide).
 
+## Model discovery
+
+`listModels` (`src/lib/llm.ts`) queries the provider's `/models` endpoint — directly with
+BYOK, or via the Edge Function's `GET /api/chat` branch. `parseModelList` normalises the
+OpenAI and Anthropic response shapes; `filterChatModels` removes non-conversational ids.
+`detectProviderFromKey` (`src/lib/providers.ts`) maps a key's prefix to a provider so
+pasting a key selects the right one.
+
 ## Extending
 
 - **New provider:** append to `PROVIDERS` in `src/lib/providers.ts`. If it is

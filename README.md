@@ -12,9 +12,12 @@ sandboxed terminal.
 
 ## Features
 
-- **Provider-agnostic** — OpenAI, Anthropic Claude and xAI Grok out of the box, with a
-  free-text model field so new models work without a code change. Adding a provider is
-  one entry in `src/lib/providers.ts`.
+- **Provider-agnostic** — OpenAI, Anthropic Claude and xAI Grok out of the box. Adding a
+  provider is one entry in `src/lib/providers.ts`.
+- **Auto-detected provider + live model list** — paste an API key and ANVIL recognises the
+  provider from the key's shape (`sk-ant-…` → Claude, `sk-…` → OpenAI, `xai-…` → Grok),
+  then calls that provider's `/models` endpoint to load the models your key can actually
+  use. Pick one from the dropdown or type any id.
 - **Agentic file editing** — the model gets real tools (`list_files`, `read_file`,
   `write_file`, `delete_file`, `run_code`) and operates on a virtual project tree.
 - **Diff review** — every write the agent proposes is shown as a side-by-side Monaco
@@ -33,13 +36,15 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Open **Settings**, pick a provider, paste an API key, and start chatting. Turn on
-**Agent** in the chat panel to let the model edit files.
+Open **Settings**, pick a provider (or just paste an API key — the provider is detected
+from the key), choose a model from the live list, and start chatting. Turn on **Agent** in
+the chat panel to let the model edit files.
 
 ```bash
 npm run build      # production build → dist/
 npm run preview    # serve the build locally
 npm run typecheck  # tsc --noEmit
+npm test           # unit tests (vitest)
 ```
 
 ## Deploying to Vercel
@@ -72,6 +77,23 @@ ANVIL supports both models, chosen per-user in Settings:
   attaches a server-side key from the environment and streams the provider's response
   back. Users never see the key; the operator pays.
 
+## Choosing a model
+
+ANVIL does not hard-code a model list it can't keep current. When a key is present it
+queries the provider's `/models` endpoint (`src/lib/llm.ts → listModels`) and shows what
+is actually available, filtering out non-conversational models (embeddings, moderation,
+TTS, Whisper, image models). The model field is still free text, so brand-new models work
+before any code changes.
+
+In **hosted proxy** mode the same listing is served by the Edge Function
+(`GET /api/chat` with the `x-anvil-models: 1` header), using the server-side key.
+
+## Testing
+
+`npm test` runs the unit suite (vitest) covering key detection, model-list parsing and
+filtering, the OpenAI/Anthropic message converters, and diff statistics. `npm run
+typecheck` type-checks the app.
+
 ## Architecture
 
 ```
@@ -89,7 +111,8 @@ src/
   components/      FileExplorer · EditorPanel · ChatPanel · TerminalPanel
                    SettingsModal · DiffReview
   App.tsx          Orchestration: state, agent run, approval gate, terminal
-api/chat.ts        Vercel Edge Function — the hosted proxy
+api/chat.ts        Vercel Edge Function — the hosted proxy (chat + model list)
+tests/             vitest unit tests (key detection, model parsing, converters, diff)
 ```
 
 The agent runs a bounded loop (`maxSteps`, default 8): ask the model for the next step;

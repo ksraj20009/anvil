@@ -65,3 +65,17 @@ export const PROVIDERS: ProviderConfig[] = [
 export function getProvider(id: string): ProviderConfig {
   return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
 }
+
+/**
+ * Guess the provider from the shape of an API key, so pasting a key selects
+ * the right provider automatically. Returns null when the format is unknown.
+ */
+export function detectProviderFromKey(key: string): string | null {
+  const k = key.trim();
+  if (!k) return null;
+  // Order matters: "sk-ant-" also starts with "sk-".
+  if (k.startsWith("sk-ant-")) return "anthropic";
+  if (k.startsWith("xai-")) return "xai";
+  if (k.startsWith("sk-proj-") || k.startsWith("sk-")) return "openai";
+  return null;
+}

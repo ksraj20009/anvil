@@ -63,7 +63,7 @@ function safeParse(json: string): unknown {
   }
 }
 
-function toOpenAIMessages(messages: ChatMessage[]): unknown[] {
+export function toOpenAIMessages(messages: ChatMessage[]): unknown[] {
   return messages.map((m) => {
     if (m.role === "assistant" && m.toolCalls?.length) {
       return {
@@ -93,7 +93,7 @@ interface AnthropicBlock {
   content?: unknown;
 }
 
-function toAnthropicMessages(messages: ChatMessage[]): {
+export function toAnthropicMessages(messages: ChatMessage[]): {
   system: string;
   messages: unknown[];
 } {
@@ -282,4 +282,89 @@ export async function complete(
       });
   }
   return { text, toolCalls };
+}
+
+// ---------------------------------------------------------------------------
+// Model discovery
+// ---------------------------------------------------------------------------
+
+export interface ListModelsOptions {
+  provider: ProviderConfig;
+  mode: "byok" | "proxy";
+  apiKey?: string;
+  signal?: AbortSignal;
+}
+
+/**
+ * Ask the provider which models this key can use. Works against the live
+ * `/models` endpoint (direct with BYOK, or through the hosted proxy).
+ */
+export async function listModels(opts: ListModelsOptions): Promise<string[]> {
+  const { provider: p, mode, apiKey, signal } = opts;
+  let res: Response;
+
+  if (mode === "proxy") {
+    res = await fetch("/api/chat", {
+      method: "GET",
+      headers: { "x-anvil-provider": p.id, "x-anvil-models": "1" },
+      signal,
+    });
+  } else {
+    const headers: Record<string, string> = {};
+    if (p.kind === "openai") {
+      headers.authorization = `Bearer ${apiKey ?? ""}`;
+    } else {
+      headers["x-api-key"] = apiKey ?? "";
+      headers["anthropic-version"] = "2023-06-01";
+      headers["anthropic-dangerous-direct-browser-access"] = "true";
+    }
+    res = await fetch(`${p.baseUrl}/models`, { method: "GET", headers, signal });
+  }
+
+  if (!res.ok) throw new Error(await errorText(res));
+  return filterChatModels(parseModelList(await res.json()));
+}
+
+/** Pull model ids out of the various shapes a /models endpoint may return. */
+export function parseModelList(json: unknown): string[] {
+  const j = json as any;
+  const arr: any[] = Array.isArray(j?.data)
+    ? j.data
+    : Array.isArray(j?.models)
+      ? j.models
+      : Array.isArray(j)
+        ? j
+        : [];
+  const ids = arr
+    .map((m) => (typeof m === "string" ? m : m?.id ?? m?.name))
+    .filter((x): x is string => typeof x === "string" && x.length > 0);
+  return [...new Set(ids)];
+}
+
+/** Substrings that mark a model as non-conversational. */
+const NON_CHAT = [
+  "embedding",
+  "moderation",
+  "whisper",
+  "tts",
+  "dall-e",
+  "dall\u00b7e",
+  "audio",
+  "speech",
+  "transcribe",
+  "realtime",
+  "sora",
+  "image-",
+  "-image",
+  "davinci",
+  "babbage",
+  "ada-",
+  "curie",
+];
+
+/** Keep conversational models, sorted for a clean dropdown. */
+export function filterChatModels(ids: string[]): string[] {
+  return ids
+    .filter((id) => !NON_CHAT.some((t) => id.toLowerCase().includes(t)))
+    .sort((a, b) => a.localeCompare(b));
 }
