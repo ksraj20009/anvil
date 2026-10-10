@@ -3,6 +3,10 @@ const promptEl = document.getElementById("prompt");
 const sendBtn = document.getElementById("send");
 const codeEl = document.getElementById("code");
 const copyBtn = document.getElementById("copy");
+const runBtn = document.getElementById("run");
+const outputEl = document.getElementById("output");
+const newChatBtn = document.getElementById("new-chat");
+const filenameEl = document.getElementById("filename");
 
 function addMessage(text, isUser = false) {
   const div = document.createElement("div");
@@ -13,14 +17,21 @@ function addMessage(text, isUser = false) {
 }
 
 function mockAIResponse(prompt) {
-  // Simple demo responses — replace with real AI API later
-  if (prompt.toLowerCase().includes("react")) {
-    return `Here's a simple React component:\n\n\`\`\`jsx\nfunction Welcome({ name }) {\n  return <h1>Hello, {name}!</h1>;\n}\n\`\`\``;
+  const p = prompt.toLowerCase();
+  if (p.includes("react") || p.includes("component")) {
+    filenameEl.textContent = "App.jsx";
+    return `Here's a React component:\n\n\`\`\`jsx\nfunction App() {\n  return (\n    <div>\n      <h1>Hello from ANVIL</h1>\n      <p>Built as a web-based coding assistant.</p>\n    </div>\n  );\n}\nexport default App;\n\`\`\``;
   }
-  if (prompt.toLowerCase().includes("python") || prompt.toLowerCase().includes("function")) {
-    return `Here's a Python function example:\n\n\`\`\`python\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("ANVIL"))\n\`\`\``;
+  if (p.includes("python") || p.includes("flask") || p.includes("django")) {
+    filenameEl.textContent = "app.py";
+    return `Python example:\n\n\`\`\`python\ndef main():\n    print("ANVIL is ready")\n    return "success"\n\nif __name__ == "__main__":\n    main()\n\`\`\``;
   }
-  return `I can help you with that! Here's a starting point:\n\n\`\`\`javascript\n// ${prompt.slice(0, 50)}...\nfunction solution() {\n  // Your code here\n  console.log("Built with ANVIL");\n}\n\`\`\`\n\nTell me more details and I'll refine it.`;
+  if (p.includes("html") || p.includes("css") || p.includes("page")) {
+    filenameEl.textContent = "index.html";
+    return `Simple page:\n\n\`\`\`html\n<!DOCTYPE html>\n<html>\n<head><title>ANVIL</title></head>\n<body>\n  <h1>Built with ANVIL</h1>\n</body>\n</html>\n\`\`\``;
+  }
+  filenameEl.textContent = "main.js";
+  return `Starting point for: "${prompt.slice(0, 60)}"\n\n\`\`\`javascript\nfunction solution() {\n  // TODO: implement\n  console.log("ANVIL generated this");\n  return true;\n}\nsolution();\n\`\`\`\n\nGive me more details and I’ll improve it.`;
 }
 
 sendBtn.addEventListener("click", () => {
@@ -30,17 +41,15 @@ sendBtn.addEventListener("click", () => {
   addMessage(prompt, true);
   promptEl.value = "";
 
-  // Simulate thinking
   setTimeout(() => {
     const response = mockAIResponse(prompt);
     addMessage(response);
-    
-    // Extract code block if present and put in editor
+
     const codeMatch = response.match(/```(?:\w+)?\n([\s\S]*?)```/);
     if (codeMatch) {
       codeEl.value = codeMatch[1].trim();
     }
-  }, 600);
+  }, 500);
 });
 
 promptEl.addEventListener("keydown", (e) => {
@@ -53,5 +62,25 @@ promptEl.addEventListener("keydown", (e) => {
 copyBtn.addEventListener("click", () => {
   navigator.clipboard.writeText(codeEl.value);
   copyBtn.textContent = "Copied!";
-  setTimeout(() => copyBtn.textContent = "Copy", 1500);
+  setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
+});
+
+runBtn.addEventListener("click", () => {
+  outputEl.innerHTML = "<em>Running...</em>";
+  try {
+    const result = new Function(codeEl.value)();
+    outputEl.textContent = result !== undefined ? String(result) : "Ran successfully (no return value)";
+  } catch (err) {
+    outputEl.textContent = "Error: " + err.message;
+  }
+});
+
+newChatBtn.addEventListener("click", () => {
+  messagesEl.innerHTML = `
+    <div class="message ai">
+      <strong>ANVIL:</strong> New chat started. What do you want to build?
+    </div>`;
+  codeEl.value = "// New session\nconsole.log('ANVIL');";
+  filenameEl.textContent = "main.js";
+  outputEl.textContent = "";
 });

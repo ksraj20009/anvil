@@ -17,13 +17,16 @@
         <h1>ANVIL</h1>
       </div>
       <div class="subtitle">AI Coding Assistant</div>
+      <div class="header-actions">
+        <button id="new-chat">New Chat</button>
+      </div>
     </header>
 
     <main class="main">
       <section class="chat-panel">
         <div class="messages" id="messages">
           <div class="message ai">
-            <strong>ANVIL:</strong> Hey! I'm your AI coding assistant. Describe what you want to build and I'll help you write the code.
+            <strong>ANVIL:</strong> Ready. Describe what you want to build, fix, or explain and I’ll generate the code.
           </div>
         </div>
         <div class="input-area">
@@ -34,12 +37,16 @@
 
       <section class="editor-panel">
         <div class="editor-header">
-          <span>main.js</span>
-          <button id="copy">Copy</button>
+          <span id="filename">main.js</span>
+          <div>
+            <button id="run">Run</button>
+            <button id="copy">Copy</button>
+          </div>
         </div>
         <textarea id="code" class="code-editor" spellcheck="false">// Your code will appear here
 console.log("Welcome to ANVIL");
 </textarea>
+        <div class="output" id="output"></div>
       </section>
     </main>
   </div>

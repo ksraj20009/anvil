@@ -2,34 +2,42 @@
 
 **ANVIL** is a web-based AI coding assistant — an open alternative to tools like Cursor, Claude Code, and Codex.
 
-Built as a clean, dark-themed webapp with chat + code editor.
+Clean dark-themed webapp with chat + code editor + basic runner.
 
-## Features (Current MVP)
+## Features
 
-- Chat interface to describe what you want
-- Live code editor panel
-- Dark theme inspired by modern coding tools
-- Copy-to-clipboard for generated code
-- Demo AI responses (ready to connect to a real model)
+- Chat interface
+- Live code editor
+- Copy code
+- Simple “Run” for JavaScript snippets
+- New chat button
+- Dark theme
+- Demo AI responses (ready for real backend)
 
 ## How to Run
 
-1. Clone the repo
-2. Open `index.html` in your browser  
-   (or use a simple local server: `python -m http.server`)
+```bash
+# Option 1
+python -m http.server 8000
+# then open http://localhost:8000
+
+# Option 2
+npx serve .
+```
+
+Or just open `index.html` directly in the browser.
 
 ## Next Steps
 
-- Connect a real AI backend (OpenAI, Anthropic, Groq, local models, etc.)
-- Add file explorer & multi-file support
-- Integrate Monaco Editor for better code editing
-- Add preview / run functionality
-- Authentication & project saving
+- Connect real AI API
+- Monaco Editor
+- File explorer & multi-file projects
+- Terminal / preview pane
+- Project saving
 
 ## Tech
 
-- Plain HTML + CSS + JavaScript (no build step needed for the MVP)
-- Easy to extend into React / Next.js later
+Plain HTML + CSS + JS (zero build step for the current version).
 
 ---
 

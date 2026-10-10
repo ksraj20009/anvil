@@ -1,0 +1,12 @@
+{
+  "name": "anvil",
+  "version": "0.1.0",
+  "description": "ANVIL — web-based AI coding assistant alternative",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": ["ai", "coding", "assistant", "webapp"],
+  "license": "MIT"
+}
