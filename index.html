@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANVIL — AI Coding Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 3v12l6 6 6-6V3"/>
+          <path d="M12 21V9"/>
+        </svg>
+        <h1>ANVIL</h1>
+      </div>
+      <div class="subtitle">AI Coding Assistant</div>
+    </header>
+
+    <main class="main">
+      <section class="chat-panel">
+        <div class="messages" id="messages">
+          <div class="message ai">
+            <strong>ANVIL:</strong> Hey! I'm your AI coding assistant. Describe what you want to build and I'll help you write the code.
+          </div>
+        </div>
+        <div class="input-area">
+          <textarea id="prompt" placeholder="Ask ANVIL to write code, fix bugs, explain concepts..." rows="3"></textarea>
+          <button id="send">Send</button>
+        </div>
+      </section>
+
+      <section class="editor-panel">
+        <div class="editor-header">
+          <span>main.js</span>
+          <button id="copy">Copy</button>
+        </div>
+        <textarea id="code" class="code-editor" spellcheck="false">// Your code will appear here
+console.log("Welcome to ANVIL");
+</textarea>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
