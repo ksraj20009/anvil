@@ -78,9 +78,10 @@ The repo is Vercel-ready (`vercel.json` uses the Vite preset; `dist/` is the out
    [`.env.example`](.env.example) for the full list. You only need the ones you intend to
    offer — without them, users can still use BYOK.
 
-   To give every visitor **free, key-less access** on the default provider, set
-   `SARVAM_API_KEY` and switch the app to *Use hosted proxy* (Settings → Key handling).
-   Sarvam offers a free developer tier — get a key at [dashboard.sarvam.ai](https://dashboard.sarvam.ai).
+   To give every visitor **key-less access** on the default provider, set `SARVAM_API_KEY`
+   and switch the app to *Use hosted proxy* (Settings → Key handling). Get a key at
+   [dashboard.sarvam.ai](https://dashboard.sarvam.ai) — check Sarvam's current pricing and
+   any free credits offered on signup.
 
 Pushes to `main` auto-deploy.
 
