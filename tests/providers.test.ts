@@ -15,6 +15,16 @@ describe("detectProviderFromKey", () => {
     expect(detectProviderFromKey("xai-abc123")).toBe("xai");
   });
 
+  it("detects other providers by prefix", () => {
+    expect(detectProviderFromKey("gsk_abc")).toBe("groq");
+    expect(detectProviderFromKey("sk-or-v1-abc")).toBe("openrouter");
+    expect(detectProviderFromKey("nvapi-abc")).toBe("nvidia");
+    expect(detectProviderFromKey("pplx-abc")).toBe("perplexity");
+    expect(detectProviderFromKey("fw_abc")).toBe("fireworks");
+    expect(detectProviderFromKey("csk-abc")).toBe("cerebras");
+    expect(detectProviderFromKey("AIzaSyABC")).toBe("google");
+  });
+
   it("returns null for empty or unknown formats", () => {
     expect(detectProviderFromKey("")).toBeNull();
     expect(detectProviderFromKey("   ")).toBeNull();
@@ -49,5 +59,32 @@ describe("effectiveProvider", () => {
     expect(
       effectiveProvider({ providerId: "anthropic", baseUrlOverride: "http://x/v1" }).kind
     ).toBe("anthropic");
+  });
+});
+
+describe("provider registry", () => {
+  it("has unique ids and complete fields", () => {
+    const ids = PROVIDERS.map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const p of PROVIDERS) {
+      expect(p.label.length).toBeGreaterThan(0);
+      expect(p.baseUrl.startsWith("http")).toBe(true);
+      expect(["openai", "anthropic"]).toContain(p.kind);
+      expect(typeof p.requiresKey).toBe("boolean");
+      expect(p.models.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("ships Sarvam as the default with a matching model", () => {
+    const sarvam = PROVIDERS[0];
+    expect(sarvam.id).toBe("sarvam");
+    expect(sarvam.baseUrl).toBe("https://api.sarvam.ai/v2");
+    expect(sarvam.models.some((m) => m.id === sarvam.defaultModel)).toBe(true);
+  });
+
+  it("marks local endpoints as key-free", () => {
+    expect(getProvider("ollama").requiresKey).toBe(false);
+    expect(getProvider("lmstudio").requiresKey).toBe(false);
+    expect(getProvider("sarvam").requiresKey).toBe(true);
   });
 });

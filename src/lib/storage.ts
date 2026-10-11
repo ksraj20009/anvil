@@ -1,5 +1,4 @@
 import type { Settings } from "../types";
-import { PROVIDERS } from "./providers";
 import { parseChat, serializeChat, type ChatState } from "./project";
 import { parseSessions, serializeSessions, type SessionsState } from "./sessions";
 
@@ -8,8 +7,8 @@ const CHAT_KEY = "anvil.chat.v1";
 const SESSIONS_KEY = "anvil.sessions.v1";
 
 export const DEFAULT_SETTINGS: Settings = {
-  providerId: "openai",
-  model: PROVIDERS[0].defaultModel,
+  providerId: "sarvam",
+  model: "sarvam-105b",
   mode: "byok",
   apiKeys: {},
   autoApply: false,

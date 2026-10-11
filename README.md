@@ -12,8 +12,10 @@ sandboxed terminal.
 
 ## Features
 
-- **Provider-agnostic** — OpenAI, Anthropic Claude and xAI Grok out of the box. Adding a
-  provider is one entry in `src/lib/providers.ts`.
+- **Provider-agnostic** — 17 providers built in, from OpenAI, Claude and Grok to **Sarvam
+  AI** (the default), Google Gemini, NVIDIA NIM, Mistral, DeepSeek, Groq, Together,
+  Fireworks, OpenRouter, Perplexity, Cohere, Cerebras, and local Ollama / LM Studio.
+  Adding another is one entry in `src/lib/providers.ts`.
 - **Auto-detected provider + live model list** — paste an API key and ANVIL recognises the
   provider from the key's shape (`sk-ant-…` → Claude, `sk-…` → OpenAI, `xai-…` → Grok),
   then calls that provider's `/models` endpoint to load the models your key can actually
@@ -72,17 +74,42 @@ The repo is Vercel-ready (`vercel.json` uses the Vite preset; `dist/` is the out
 
 1. Import the repo at [vercel.com/new](https://vercel.com/new).
 2. **For the hosted proxy**, add environment variables under
-   *Project → Settings → Environment Variables*:
+   *Project → Settings → Environment Variables*. Every provider has one; see
+   [`.env.example`](.env.example) for the full list. You only need the ones you intend to
+   offer — without them, users can still use BYOK.
 
-   | Variable | Provider |
-   | --- | --- |
-   | `OPENAI_API_KEY` | OpenAI |
-   | `ANTHROPIC_API_KEY` | Anthropic Claude |
-   | `XAI_API_KEY` | xAI Grok |
-
-   You only need the ones you intend to offer. Without them, users can still use BYOK.
+   To give every visitor **free, key-less access** on the default provider, set
+   `SARVAM_API_KEY` and switch the app to *Use hosted proxy* (Settings → Key handling).
+   Sarvam offers a free developer tier — get a key at [dashboard.sarvam.ai](https://dashboard.sarvam.ai).
 
 Pushes to `main` auto-deploy.
+
+## Providers
+
+ANVIL ships with these out of the box. All but Anthropic speak the OpenAI wire format, so
+they share one adapter; Sarvam is the default.
+
+| Provider | Base URL | Key env var |
+| --- | --- | --- |
+| **Sarvam AI** (default) | `api.sarvam.ai/v2` | `SARVAM_API_KEY` |
+| OpenAI | `api.openai.com/v1` | `OPENAI_API_KEY` |
+| Anthropic Claude | `api.anthropic.com/v1` | `ANTHROPIC_API_KEY` |
+| xAI Grok | `api.x.ai/v1` | `XAI_API_KEY` |
+| Google Gemini | `generativelanguage.googleapis.com/v1beta/openai` | `GEMINI_API_KEY` |
+| NVIDIA NIM | `integrate.api.nvidia.com/v1` | `NVIDIA_API_KEY` |
+| Mistral | `api.mistral.ai/v1` | `MISTRAL_API_KEY` |
+| DeepSeek | `api.deepseek.com/v1` | `DEEPSEEK_API_KEY` |
+| Groq | `api.groq.com/openai/v1` | `GROQ_API_KEY` |
+| Together AI | `api.together.xyz/v1` | `TOGETHER_API_KEY` |
+| Fireworks AI | `api.fireworks.ai/inference/v1` | `FIREWORKS_API_KEY` |
+| OpenRouter | `openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
+| Perplexity | `api.perplexity.ai` | `PERPLEXITY_API_KEY` |
+| Cohere | `api.cohere.ai/compatibility/v1` | `COHERE_API_KEY` |
+| Cerebras | `api.cerebras.ai/v1` | `CEREBRAS_API_KEY` |
+| Ollama (local) | `localhost:11434/v1` | — none needed |
+| LM Studio (local) | `localhost:1234/v1` | — none needed |
+
+Anything else that is OpenAI-compatible works via the **Base URL** field in Settings.
 
 ## Key handling
 

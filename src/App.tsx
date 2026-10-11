@@ -306,7 +306,7 @@ export default function App() {
     const p = effectiveProvider(settings);
     const apiKey = settings.apiKeys[settings.providerId] ?? "";
 
-    if (settings.mode === "byok" && !apiKey) {
+    if (settings.mode === "byok" && p.requiresKey && !apiKey) {
       setItems((it) => [
         ...it,
         { kind: "error", text: `No API key for ${p.label}. Open Settings to add one, or switch to the hosted proxy.` },

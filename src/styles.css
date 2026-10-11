@@ -1040,3 +1040,13 @@ select {
 .field-hint.err {
   color: var(--rem);
 }
+
+/* ---- Provider picker ---- */
+.provider-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.provider-pick select {
+  flex: 1;
+}

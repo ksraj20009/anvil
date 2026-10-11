@@ -20,9 +20,33 @@ interface ProviderEntry {
 }
 
 const PROVIDERS: Record<string, ProviderEntry> = {
+  sarvam: { baseUrl: "https://api.sarvam.ai/v2", kind: "openai", env: "SARVAM_API_KEY" },
   openai: { baseUrl: "https://api.openai.com/v1", kind: "openai", env: "OPENAI_API_KEY" },
   anthropic: { baseUrl: "https://api.anthropic.com/v1", kind: "anthropic", env: "ANTHROPIC_API_KEY" },
   xai: { baseUrl: "https://api.x.ai/v1", kind: "openai", env: "XAI_API_KEY" },
+  google: {
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    kind: "openai",
+    env: "GEMINI_API_KEY",
+  },
+  nvidia: { baseUrl: "https://integrate.api.nvidia.com/v1", kind: "openai", env: "NVIDIA_API_KEY" },
+  mistral: { baseUrl: "https://api.mistral.ai/v1", kind: "openai", env: "MISTRAL_API_KEY" },
+  deepseek: { baseUrl: "https://api.deepseek.com/v1", kind: "openai", env: "DEEPSEEK_API_KEY" },
+  groq: { baseUrl: "https://api.groq.com/openai/v1", kind: "openai", env: "GROQ_API_KEY" },
+  together: { baseUrl: "https://api.together.xyz/v1", kind: "openai", env: "TOGETHER_API_KEY" },
+  fireworks: {
+    baseUrl: "https://api.fireworks.ai/inference/v1",
+    kind: "openai",
+    env: "FIREWORKS_API_KEY",
+  },
+  openrouter: { baseUrl: "https://openrouter.ai/api/v1", kind: "openai", env: "OPENROUTER_API_KEY" },
+  perplexity: { baseUrl: "https://api.perplexity.ai", kind: "openai", env: "PERPLEXITY_API_KEY" },
+  cohere: {
+    baseUrl: "https://api.cohere.ai/compatibility/v1",
+    kind: "openai",
+    env: "COHERE_API_KEY",
+  },
+  cerebras: { baseUrl: "https://api.cerebras.ai/v1", kind: "openai", env: "CEREBRAS_API_KEY" },
 };
 
 function jsonError(message: string, status: number): Response {

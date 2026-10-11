@@ -24,7 +24,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
   // Load the live model list whenever the provider, mode, or key changes.
   useEffect(() => {
-    if (draft.mode === "byok" && !key.trim()) {
+    if (draft.mode === "byok" && provider.requiresKey && !key.trim()) {
       setModels(null);
       setModelError(null);
       setLoading(false);
@@ -99,21 +99,19 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
 
         <div className="field">
           <label>Provider</label>
-          <div className="segmented">
-            {PROVIDERS.map((p) => (
-              <button
-                key={p.id}
-                className={p.id === draft.providerId ? "seg active" : "seg"}
-                onClick={() => setProvider(p.id)}
-              >
-                <span className="seg-dot" style={{ background: p.color }} />
-                {p.label}
-              </button>
-            ))}
+          <div className="provider-pick">
+            <span className="seg-dot" style={{ background: provider.color }} />
+            <select value={draft.providerId} onChange={(e) => setProvider(e.target.value)}>
+              {PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
           </div>
           <p className="field-hint">
-            Pick a provider, or just paste an API key below — ANVIL detects the provider
-            from the key automatically.
+            Pick a provider, or paste an API key below — ANVIL detects the provider from the
+            key automatically.
           </p>
         </div>
 
@@ -135,7 +133,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
           </div>
         </div>
 
-        {draft.mode === "byok" ? (
+        {draft.mode === "byok" && provider.requiresKey ? (
           <div className="field">
             <label>{provider.keyLabel}</label>
             <input
@@ -156,6 +154,14 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
                 {provider.docsUrl.replace("https://", "")}
               </a>
               .
+            </p>
+          </div>
+        ) : draft.mode === "byok" ? (
+          <div className="field">
+            <label>API key</label>
+            <p className="field-hint">
+              No API key needed — {provider.label} runs on your machine at {" "}
+              <code>{provider.baseUrl}</code>.
             </p>
           </div>
         ) : (

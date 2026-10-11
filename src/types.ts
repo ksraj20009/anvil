@@ -57,6 +57,8 @@ export interface ProviderConfig {
   defaultModel: string;
   /** Accent colour for the provider mark in the UI. */
   color: string;
+  /** Whether an API key is required (false for local endpoints). */
+  requiresKey: boolean;
   models: { id: string; label: string }[];
 }
 
