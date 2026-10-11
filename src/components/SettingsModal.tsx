@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Settings } from "../types";
+import type { CloudAction, Settings } from "../types";
 import { providerList, getProvider, effectiveProvider, detectProviderFromKey } from "../lib/providers";
 import { customProviders } from "../lib/customProviders";
 import { listModels } from "../lib/llm";
@@ -8,9 +8,10 @@ interface Props {
   settings: Settings;
   onSave: (s: Settings) => void;
   onClose: () => void;
+  cloudAction: (action: CloudAction, cfg: { url: string; anonKey: string }) => Promise<string>;
 }
 
-export function SettingsModal({ settings, onSave, onClose }: Props) {
+export function SettingsModal({ settings, onSave, onClose, cloudAction }: Props) {
   const [draft, setDraft] = useState<Settings>({ ...settings, apiKeys: { ...settings.apiKeys } });
   const [models, setModels] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,6 +22,20 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
   const [newBaseUrl, setNewBaseUrl] = useState("");
   const [newKind, setNewKind] = useState<"openai" | "anthropic">("openai");
   const [newModel, setNewModel] = useState("");
+  const [cloudMsg, setCloudMsg] = useState<string | null>(null);
+  const [cloudBusy, setCloudBusy] = useState(false);
+
+  const runCloud = async (action: CloudAction) => {
+    setCloudBusy(true);
+    setCloudMsg(null);
+    try {
+      setCloudMsg(await cloudAction(action, { url: draft.supabaseUrl, anonKey: draft.supabaseAnonKey }));
+    } catch (e) {
+      setCloudMsg(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCloudBusy(false);
+    }
+  };
 
   const defaultProvider = getProvider(draft.providerId);
   const provider = effectiveProvider(draft);
@@ -227,6 +242,47 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
           <p className="field-hint">
             Point at any OpenAI-compatible endpoint (Ollama, LM Studio, OpenRouter, a proxy).
             Leave blank to use {defaultProvider.label}'s default.
+          </p>
+        </div>
+
+        <div className="field">
+          <label>Cloud sync (Supabase)</label>
+          <p className="field-hint">
+            Optional. Keep your workspace in the cloud or publish a read-only share link.
+            ANVIL works fully offline without it.
+          </p>
+          <input
+            placeholder="Supabase URL"
+            value={draft.supabaseUrl}
+            onChange={(e) => setDraft((d) => ({ ...d, supabaseUrl: e.target.value }))}
+          />
+          <input
+            placeholder="Supabase anon key"
+            value={draft.supabaseAnonKey}
+            onChange={(e) => setDraft((d) => ({ ...d, supabaseAnonKey: e.target.value }))}
+          />
+          <div className="segmented">
+            <button className="seg" disabled={cloudBusy} onClick={() => runCloud("signin")}>
+              Sign in
+            </button>
+            <button className="seg" disabled={cloudBusy} onClick={() => runCloud("signout")}>
+              Sign out
+            </button>
+            <button className="seg" disabled={cloudBusy} onClick={() => runCloud("save")}>
+              Save to cloud
+            </button>
+            <button className="seg" disabled={cloudBusy} onClick={() => runCloud("load")}>
+              Load latest
+            </button>
+            <button className="seg" disabled={cloudBusy} onClick={() => runCloud("share")}>
+              Share link
+            </button>
+          </div>
+          {cloudBusy && <p className="field-hint">Working…</p>}
+          {cloudMsg && <p className="field-hint">{cloudMsg}</p>}
+          <p className="field-hint">
+            Needs the schema from <code>supabase/migrations/0001_anvil_cloud.sql</code> applied to
+            your project.
           </p>
         </div>
 

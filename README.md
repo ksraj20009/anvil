@@ -10,6 +10,11 @@ sandboxed terminal.
 
 ---
 
+## Live demo
+
+**<https://anvil-mocha-omega.vercel.app>** — deployed from this repo; pushes to `main`
+auto-deploy.
+
 ## Features
 
 - **Provider-agnostic** — 27 providers built in, from OpenAI, Claude and Grok to **Sarvam
@@ -85,6 +90,39 @@ The repo is Vercel-ready (`vercel.json` uses the Vite preset; `dist/` is the out
 
 Pushes to `main` auto-deploy.
 
+## Cloud backend (Supabase)
+
+ANVIL works fully offline, but an optional Supabase backend adds cloud sync and share
+links. The app ships pointed at a Supabase project; you can point it at your own.
+
+**Setup (one paste):**
+
+1. Supabase Dashboard → **SQL Editor** → paste
+   [`supabase/migrations/0001_anvil_cloud.sql`](supabase/migrations/0001_anvil_cloud.sql) → **Run**.
+2. *(Optional)* Authentication → Providers → enable **Anonymous sign-ins**, so users can
+   sync without an email. Otherwise they sign in with a magic link.
+3. Open ANVIL → Settings → **Cloud sync (Supabase)**. URL and anon key are pre-filled;
+   change them to use your own project.
+
+What it gives you:
+
+- **Save / Load** — your workspace (files + chats) in `public.workspaces`, one row per user,
+  guarded by row-level security.
+- **Share link** — publishes a project read-only to `public.shared_projects`; anyone opening
+  `?p=<slug>` loads it.
+
+### Alternative key proxy (Supabase Edge Function)
+
+Prefer Supabase over Vercel functions? `supabase/functions/chat-proxy/index.ts` is an
+equivalent proxy that keeps provider keys as Edge Function secrets:
+
+```bash
+supabase functions deploy chat-proxy --no-verify-jwt
+supabase secrets set SARVAM_API_KEY=... OPENAI_API_KEY=...
+```
+
+Then set Settings → **Base URL** to `https://<project>.supabase.co/functions/v1/chat-proxy`.
+
 ## Providers
 
 ANVIL ships with these out of the box. All but Anthropic speak the OpenAI wire format, so
@@ -154,7 +192,7 @@ In **hosted proxy** mode the same listing is served by the Edge Function
 
 ## Testing
 
-`npm test` runs the unit suite (vitest, 62 tests) covering key detection, model-list
+`npm test` runs the unit suite (vitest, 75 tests) covering key detection, model-list
 parsing/filtering, the OpenAI/Anthropic message converters (incl. images), @-mention
 parsing, session serialization, GitHub helpers, language detection, image handling,
 project/chat serialization, and diff statistics. `npm run typecheck` type-checks the app.
@@ -182,6 +220,8 @@ src/
     exec.ts        Language dispatch: JavaScript vs Python
     github.ts      GitHub client (list repos, pull tree, push commit) + pure helpers
     vision.ts      Image attachments (read, validate, base64)
+    cloud.ts       Supabase client (auth, save/load workspaces, share links)
+    cloudConfig.ts Default Supabase URL + publishable key
     diff.ts        Change statistics for the review card
     markdown.ts    Sanitized markdown for the transcript
     storage.ts     Settings persistence
@@ -189,7 +229,8 @@ src/
                    SettingsModal · DiffReview · SessionList · CommandPalette · GitHubPanel
   App.tsx          Orchestration: state, agent run, approval gate, terminal
 api/chat.ts        Vercel Edge Function — the hosted proxy (chat + model list)
-tests/             vitest unit tests (62)
+supabase/          SQL migration + Edge Function proxy (alternative backend)
+tests/             vitest unit tests (75)
 ```
 
 The agent runs a bounded loop (`maxSteps`, default 8): ask the model for the next step;

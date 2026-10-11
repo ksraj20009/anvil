@@ -79,7 +79,12 @@ export interface Settings {
   githubToken: string;
   /** Optional base-URL override for any OpenAI-compatible endpoint. */
   baseUrlOverride: string;
+  /** Optional Supabase cloud sync. */
+  supabaseUrl: string;
+  supabaseAnonKey: string;
 }
+
+export type CloudAction = "signin" | "signout" | "save" | "load" | "share";
 
 export interface PendingChange {
   id: string;

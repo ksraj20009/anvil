@@ -1,6 +1,7 @@
 import type { Settings } from "../types";
 import { parseChat, serializeChat, type ChatState } from "./project";
 import { parseSessions, serializeSessions, type SessionsState } from "./sessions";
+import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL } from "./cloudConfig";
 
 const SETTINGS_KEY = "anvil.settings.v1";
 const CHAT_KEY = "anvil.chat.v1";
@@ -16,6 +17,8 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   githubToken: "",
   baseUrlOverride: "",
+  supabaseUrl: DEFAULT_SUPABASE_URL,
+  supabaseAnonKey: DEFAULT_SUPABASE_ANON_KEY,
 };
 
 export function loadSettings(): Settings {

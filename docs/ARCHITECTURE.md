@@ -103,6 +103,18 @@ URL swapped for a user-supplied override, so any OpenAI-compatible server (Ollam
 Studio, OpenRouter, a proxy) works without a code change. The same override flows into
 chat requests and model discovery.
 
+## Cloud sync (Supabase)
+
+`src/lib/cloud.ts` wraps `@supabase/supabase-js` (dynamically imported, so it is
+code-split and costs nothing until used). Two tables back it:
+
+- `workspaces` — one row per user (`user_id`, `files`, `sessions`), RLS
+  `auth.uid() = user_id`.
+- `shared_projects` — public read, authenticated insert; powers `?p=<slug>` share links.
+
+The schema lives in `supabase/migrations/0001_anvil_cloud.sql`. `supabase/functions/chat-proxy`
+is an alternative to `api/chat.ts` for operators who prefer Supabase Edge Functions.
+
 ## Persistence & portability
 
 Everything lives in the browser's `localStorage`: the project tree (`anvil.vfs.v1`),

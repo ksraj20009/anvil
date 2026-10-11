@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ChatImage, ChatMessage, LogLine, PendingChange, Settings } from "./types";
+import type { ChatImage, ChatMessage, CloudAction, LogLine, PendingChange, Settings } from "./types";
 import { vfs, type VFile } from "./lib/vfs";
 import { loadSettings, saveSettings, loadSessions, saveSessions } from "./lib/storage";
 import { serializeProject, parseProject } from "./lib/project";
@@ -8,6 +8,16 @@ import { streamText } from "./lib/llm";
 import { runAgentTurn } from "./lib/agent";
 import { runCode, languageOf } from "./lib/exec";
 import { expandMentions } from "./lib/mentions";
+import {
+  currentUser,
+  signInAnonymously,
+  signOut,
+  listWorkspaces,
+  saveWorkspace,
+  shareProject,
+  getShared,
+  shareUrl,
+} from "./lib/cloud";
 import { newSession, titleFor, type SessionsState } from "./lib/sessions";
 import { FileExplorer } from "./components/FileExplorer";
 import { EditorPanel } from "./components/EditorPanel";
@@ -231,6 +241,84 @@ export default function App() {
     (id: string) => setAttachedImages((prev) => prev.filter((i) => i.id !== id)),
     []
   );
+
+  // ---- Cloud sync (Supabase) -----------------------------------------------
+  const cloudAction = useCallback(
+    async (action: CloudAction, cfg: { url: string; anonKey: string }): Promise<string> => {
+      if (!cfg.url.trim() || !cfg.anonKey.trim()) throw new Error("Set the Supabase URL and anon key first.");
+      const conf = { url: cfg.url.trim(), anonKey: cfg.anonKey.trim() };
+      switch (action) {
+        case "signin": {
+          const existing = await currentUser(conf);
+          if (existing)
+            return `Already signed in${existing.isAnonymous ? " (anonymous)" : ""} — ${existing.id.slice(0, 8)}.`;
+          const user = await signInAnonymously(conf);
+          return `Signed in anonymously — ${user.id.slice(0, 8)}.`;
+        }
+        case "signout":
+          await signOut(conf);
+          return "Signed out.";
+        case "save": {
+          if (!(await currentUser(conf))) await signInAnonymously(conf);
+          const ws = await saveWorkspace(conf, {
+            name: "My workspace",
+            files: vfs.snapshot(),
+            sessions: sessionsRef.current.sessions,
+          });
+          return `Saved — workspace ${ws.id.slice(0, 8)} (${ws.files.length} files).`;
+        }
+        case "load": {
+          const list = await listWorkspaces(conf);
+          if (!list.length) return "No cloud workspaces found.";
+          const ws = list[0];
+          vfs.replaceAll(ws.files);
+          if (ws.sessions.length) {
+            const first = ws.sessions[0];
+            historyRef.current = withSystem(first.history);
+            setItems(first.items);
+            const next = { activeId: first.id, sessions: ws.sessions };
+            saveSessions(next);
+            setSessionsState(next);
+          }
+          return `Loaded workspace ${ws.id.slice(0, 8)} (${ws.files.length} files).`;
+        }
+        case "share": {
+          if (!(await currentUser(conf))) await signInAnonymously(conf);
+          const slug = await shareProject(conf, vfs.snapshot(), "Shared from ANVIL");
+          const url = shareUrl(slug);
+          try {
+            await navigator.clipboard.writeText(url);
+          } catch {
+            /* clipboard may be blocked */
+          }
+          return `Share link (copied): ${url}`;
+        }
+      }
+    },
+    []
+  );
+
+  // Load a shared project when the URL carries ?p=<slug>.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("p");
+    if (!slug) return;
+    void (async () => {
+      try {
+        const ws = await getShared(
+          { url: settingsRef.current.supabaseUrl, anonKey: settingsRef.current.supabaseAnonKey },
+          slug
+        );
+        if (ws && ws.files.length) {
+          vfs.replaceAll(ws.files);
+          pushLog("system", `Loaded shared project "${ws.name}" (${ws.files.length} files).`);
+        } else {
+          pushLog("warn", `Shared project "${slug}" was not found.`);
+        }
+      } catch (e) {
+        pushLog("error", `Could not load shared project — ${e instanceof Error ? e.message : String(e)}`);
+      }
+    })();
+  }, [pushLog]);
 
   // ---- Sessions ------------------------------------------------------------
   const flushActive = () =>
@@ -599,7 +687,12 @@ export default function App() {
       </div>
 
       {settingsOpen && (
-        <SettingsModal settings={settings} onSave={setSettings} onClose={() => setSettingsOpen(false)} />
+        <SettingsModal
+          settings={settings}
+          onSave={setSettings}
+          onClose={() => setSettingsOpen(false)}
+          cloudAction={cloudAction}
+        />
       )}
 
       {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
