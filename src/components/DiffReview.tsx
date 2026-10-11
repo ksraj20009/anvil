@@ -54,6 +54,8 @@ export function DiffReview({ change, onApply, onReject, theme }: Props) {
             language={languageFor(change.path)}
             original={change.before}
             modified={change.after}
+            keepCurrentOriginalModel
+            keepCurrentModifiedModel
             options={{
               renderSideBySide: true,
               readOnly: true,

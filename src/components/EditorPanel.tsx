@@ -89,6 +89,7 @@ export function EditorPanel({
             language={languageFor(active)}
             value={files[active] ?? ""}
             onChange={(v) => onChange(active, v ?? "")}
+            keepCurrentModel
             options={{
               fontSize: 13,
               minimap: { enabled: false },

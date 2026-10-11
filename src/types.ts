@@ -73,6 +73,8 @@ export interface Settings {
   theme: "dark" | "light";
   /** Optional GitHub personal access token for repo sync. */
   githubToken: string;
+  /** Optional base-URL override for any OpenAI-compatible endpoint. */
+  baseUrlOverride: string;
 }
 
 export interface PendingChange {

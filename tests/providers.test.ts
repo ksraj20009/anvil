@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectProviderFromKey, getProvider, PROVIDERS } from "../src/lib/providers";
+import { detectProviderFromKey, getProvider, effectiveProvider, PROVIDERS } from "../src/lib/providers";
 
 describe("detectProviderFromKey", () => {
   it("detects Anthropic from sk-ant-", () => {
@@ -29,5 +29,25 @@ describe("getProvider", () => {
 
   it("falls back to the first provider for unknown ids", () => {
     expect(getProvider("does-not-exist").id).toBe(PROVIDERS[0].id);
+  });
+});
+
+describe("effectiveProvider", () => {
+  it("returns the default when no override is set", () => {
+    expect(effectiveProvider({ providerId: "openai", baseUrlOverride: "" }).baseUrl).toBe(
+      "https://api.openai.com/v1"
+    );
+  });
+
+  it("applies an override and strips trailing slashes", () => {
+    expect(
+      effectiveProvider({ providerId: "openai", baseUrlOverride: "http://localhost:11434/v1/" }).baseUrl
+    ).toBe("http://localhost:11434/v1");
+  });
+
+  it("keeps the provider kind", () => {
+    expect(
+      effectiveProvider({ providerId: "anthropic", baseUrlOverride: "http://x/v1" }).kind
+    ).toBe("anthropic");
   });
 });

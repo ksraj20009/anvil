@@ -96,6 +96,13 @@ helpers (`isTextPath`, `selectRepoFiles`, `parseRepos`, `decodeBase64`) are unit
 converters in `llm.ts` turn them into OpenAI `image_url` parts or Anthropic `image`
 blocks. Voice input uses the Web Speech API in the composer.
 
+## Custom endpoints
+
+`effectiveProvider` (`src/lib/providers.ts`) returns the selected provider with its base
+URL swapped for a user-supplied override, so any OpenAI-compatible server (Ollama, LM
+Studio, OpenRouter, a proxy) works without a code change. The same override flows into
+chat requests and model discovery.
+
 ## Persistence & portability
 
 Everything lives in the browser's `localStorage`: the project tree (`anvil.vfs.v1`),

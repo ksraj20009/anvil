@@ -43,6 +43,8 @@ sandboxed terminal.
   push your changes back as a commit.
 - **Light & dark themes** — toggled from Settings or the palette.
 - **Streaming chat** — token-by-token responses for plain Q&A.
+- **Any OpenAI-compatible endpoint** — set a custom base URL to point ANVIL at Ollama, LM
+  Studio, OpenRouter, or a local proxy.
 - **Two key modes** — BYOK (key stays in the browser) or a hosted proxy (key stays on
   the server). See [Key handling](#key-handling).
 
@@ -107,10 +109,15 @@ In **hosted proxy** mode the same listing is served by the Edge Function
 
 ## Testing
 
-`npm test` runs the unit suite (vitest, 59 tests) covering key detection, model-list
+`npm test` runs the unit suite (vitest, 62 tests) covering key detection, model-list
 parsing/filtering, the OpenAI/Anthropic message converters (incl. images), @-mention
 parsing, session serialization, GitHub helpers, language detection, image handling,
 project/chat serialization, and diff statistics. `npm run typecheck` type-checks the app.
+
+Beyond the unit tests, the request/streaming/parsing paths are exercised end-to-end
+against a **protocol-faithful mock** of the OpenAI and Anthropic HTTP APIs (JSON + SSE
+streaming, tool calls, `/models`) driven through a headless browser — so the real network
+code is tested, not stubbed at the function level.
 
 ## Architecture
 
@@ -137,7 +144,7 @@ src/
                    SettingsModal · DiffReview · SessionList · CommandPalette · GitHubPanel
   App.tsx          Orchestration: state, agent run, approval gate, terminal
 api/chat.ts        Vercel Edge Function — the hosted proxy (chat + model list)
-tests/             vitest unit tests (59)
+tests/             vitest unit tests (62)
 ```
 
 The agent runs a bounded loop (`maxSteps`, default 8): ask the model for the next step;

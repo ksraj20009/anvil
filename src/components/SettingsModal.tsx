@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Settings } from "../types";
-import { PROVIDERS, getProvider, detectProviderFromKey } from "../lib/providers";
+import { PROVIDERS, getProvider, effectiveProvider, detectProviderFromKey } from "../lib/providers";
 import { listModels } from "../lib/llm";
 
 interface Props {
@@ -17,7 +17,8 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
   const [latency, setLatency] = useState<number | null>(null);
   const [nonce, setNonce] = useState(0);
 
-  const provider = getProvider(draft.providerId);
+  const defaultProvider = getProvider(draft.providerId);
+  const provider = effectiveProvider(draft);
   const key = draft.apiKeys[provider.id] ?? "";
   const detected = detectProviderFromKey(key);
 
@@ -203,6 +204,19 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
               Test connection
             </button>
           </div>
+        </div>
+
+        <div className="field">
+          <label>Base URL (optional)</label>
+          <input
+            value={draft.baseUrlOverride}
+            placeholder={defaultProvider.baseUrl}
+            onChange={(e) => setDraft((d) => ({ ...d, baseUrlOverride: e.target.value }))}
+          />
+          <p className="field-hint">
+            Point at any OpenAI-compatible endpoint (Ollama, LM Studio, OpenRouter, a proxy).
+            Leave blank to use {defaultProvider.label}'s default.
+          </p>
         </div>
 
         <div className="field row">

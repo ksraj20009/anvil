@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   temperature: 0.2,
   theme: "dark",
   githubToken: "",
+  baseUrlOverride: "",
 };
 
 export function loadSettings(): Settings {

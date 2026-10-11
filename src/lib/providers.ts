@@ -70,6 +70,21 @@ export function getProvider(id: string): ProviderConfig {
 }
 
 /**
+ * The provider actually used for a request: the selected provider, with its
+ * base URL replaced when the user set an override (Ollama, LM Studio,
+ * OpenRouter, a proxy, …).
+ */
+export function effectiveProvider(settings: {
+  providerId: string;
+  baseUrlOverride?: string;
+}): ProviderConfig {
+  const base = getProvider(settings.providerId);
+  const override = settings.baseUrlOverride?.trim();
+  if (!override) return base;
+  return { ...base, baseUrl: override.replace(/\/+$/, "") };
+}
+
+/**
  * Guess the provider from the shape of an API key, so pasting a key selects
  * the right provider automatically. Returns null when the format is unknown.
  */

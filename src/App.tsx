@@ -3,7 +3,7 @@ import type { ChatImage, ChatMessage, LogLine, PendingChange, Settings } from ".
 import { vfs, type VFile } from "./lib/vfs";
 import { loadSettings, saveSettings, loadSessions, saveSessions } from "./lib/storage";
 import { serializeProject, parseProject } from "./lib/project";
-import { getProvider } from "./lib/providers";
+import { effectiveProvider } from "./lib/providers";
 import { streamText } from "./lib/llm";
 import { runAgentTurn } from "./lib/agent";
 import { runCode, languageOf } from "./lib/exec";
@@ -123,7 +123,7 @@ export default function App() {
     });
   }, [items]);
 
-  const provider = getProvider(settings.providerId);
+  const provider = effectiveProvider(settings);
 
   const pushLog = useCallback((level: LogLine["level"], text: string) => {
     setLogs((l) => [...l, { level, text }]);
@@ -303,7 +303,7 @@ export default function App() {
   const send = async () => {
     const text = input.trim();
     if ((!text && attachedImages.length === 0) || busy) return;
-    const p = getProvider(settings.providerId);
+    const p = effectiveProvider(settings);
     const apiKey = settings.apiKeys[settings.providerId] ?? "";
 
     if (settings.mode === "byok" && !apiKey) {
@@ -561,16 +561,27 @@ export default function App() {
           onRemoveImage={onRemoveImage}
         />
         <div className="right">
-          <EditorPanel
-            tabs={openTabs}
-            active={activeFile}
-            files={files}
-            onSelect={openFile}
-            onClose={closeTab}
-            onChange={editFile}
-            onRun={() => activeFile && void runPath(activeFile)}
-            theme={settings.theme}
-          />
+          {pendingChange ? (
+            <section className="editor">
+              <div className="monaco-wrap">
+                <div className="empty-state">
+                  <p>Reviewing a change…</p>
+                  <span>Approve or reject the diff to continue.</span>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <EditorPanel
+              tabs={openTabs}
+              active={activeFile}
+              files={files}
+              onSelect={openFile}
+              onClose={closeTab}
+              onChange={editFile}
+              onRun={() => activeFile && void runPath(activeFile)}
+              theme={settings.theme}
+            />
+          )}
           <TerminalPanel logs={logs} onCommand={onTerminalCommand} />
         </div>
       </div>
