@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoApply: false,
   temperature: 0.2,
   theme: "dark",
+  githubToken: "",
 };
 
 export function loadSettings(): Settings {

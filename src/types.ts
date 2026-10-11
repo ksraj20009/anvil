@@ -9,6 +9,14 @@ export interface ToolCall {
   arguments: string;
 }
 
+export interface ChatImage {
+  mime: string;
+  /** base64 payload without the data-URL prefix. */
+  data: string;
+  /** full data URL. */
+  dataUrl: string;
+}
+
 export interface ChatMessage {
   role: Role;
   content: string;
@@ -17,6 +25,8 @@ export interface ChatMessage {
   /** Tool result messages reference the call they answer. */
   toolCallId?: string;
   name?: string;
+  /** Images attached to a user message (vision models). */
+  images?: ChatImage[];
 }
 
 export interface JSONSchema {
@@ -61,6 +71,8 @@ export interface Settings {
   autoApply: boolean;
   temperature: number;
   theme: "dark" | "light";
+  /** Optional GitHub personal access token for repo sync. */
+  githubToken: string;
 }
 
 export interface PendingChange {
@@ -79,7 +91,7 @@ export interface LogLine {
 
 /** One row in the chat transcript. */
 export type TranscriptItem =
-  | { kind: "user"; text: string }
+  | { kind: "user"; text: string; images?: string[] }
   | { kind: "assistant"; text: string }
   | { kind: "tool"; name: string; args: string; result?: string }
   | { kind: "error"; text: string };

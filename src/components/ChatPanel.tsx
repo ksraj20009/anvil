@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdown } from "../lib/markdown";
 import { suggestMentions } from "../lib/mentions";
+import { formatBytes, type AttachedImage } from "../lib/vision";
 import type { TranscriptItem } from "../types";
 
 export type Item = TranscriptItem;
@@ -15,6 +16,9 @@ interface Props {
   agentMode: boolean;
   setAgentMode: (v: boolean) => void;
   files: string[];
+  images: AttachedImage[];
+  onAttachFiles: (files: File[]) => void;
+  onRemoveImage: (id: string) => void;
 }
 
 function prettyArgs(args: string): string {
@@ -46,15 +50,28 @@ export function ChatPanel({
   agentMode,
   setAgentMode,
   files,
+  images,
+  onAttachFiles,
+  onRemoveImage,
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<{ stop: () => void } | null>(null);
+
+  const speechSupported =
+    typeof window !== "undefined" &&
+    Boolean(
+      (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .SpeechRecognition ||
+        (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
+    );
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [items]);
 
-  // Detect a trailing "@fragment" to offer file suggestions.
   const mentionFragment = useMemo(() => {
     const m = /(?:^|\s)@([A-Za-z0-9_./-]*)$/.exec(input);
     return m ? m[1] : null;
@@ -72,16 +89,40 @@ export function ChatPanel({
 
   const menuOpen = mentionFragment !== null && suggestions.length > 0;
 
+  const toggleMic = () => {
+    const w = window as unknown as {
+      SpeechRecognition?: new () => any;
+      webkitSpeechRecognition?: new () => any;
+    };
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) return;
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = navigator.language || "en-IN";
+    rec.interimResults = true;
+    rec.continuous = false;
+    const base = input;
+    rec.onresult = (e: any) => {
+      let text = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) text += e.results[i][0].transcript;
+      setInput(`${base} ${text}`.trim());
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    rec.start();
+    setListening(true);
+  };
+
   return (
     <section className="chat">
       <div className="pane-head">
         <span>Chat</span>
         <label className="agent-toggle" title="Let the model read and write project files">
-          <input
-            type="checkbox"
-            checked={agentMode}
-            onChange={(e) => setAgentMode(e.target.checked)}
-          />
+          <input type="checkbox" checked={agentMode} onChange={(e) => setAgentMode(e.target.checked)} />
           Agent
         </label>
       </div>
@@ -93,7 +134,7 @@ export function ChatPanel({
             <p>A web-based, provider-agnostic AI coding agent.</p>
             <ul>
               <li>Turn on <strong>Agent</strong> and ask it to build or refactor files.</li>
-              <li>Type <strong>@</strong> to attach a file's contents to your prompt.</li>
+              <li>Type <strong>@</strong> to attach a file, or the image button for screenshots.</li>
               <li>Press <strong>⌘K</strong> / <strong>Ctrl K</strong> for the command palette.</li>
               <li>Every file write is shown as a diff you approve.</li>
             </ul>
@@ -104,6 +145,13 @@ export function ChatPanel({
           if (it.kind === "user") {
             return (
               <div key={i} className="msg user">
+                {it.images && it.images.length > 0 && (
+                  <div className="msg-images">
+                    {it.images.map((src, k) => (
+                      <img key={k} src={src} alt="attachment" />
+                    ))}
+                  </div>
+                )}
                 {it.text}
               </div>
             );
@@ -118,10 +166,7 @@ export function ChatPanel({
           if (it.kind === "assistant") {
             return (
               <div key={i} className="msg assistant">
-                <div
-                  className="md"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(it.text) }}
-                />
+                <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(it.text) }} />
               </div>
             );
           }
@@ -148,6 +193,19 @@ export function ChatPanel({
       </div>
 
       <div className="composer-wrap">
+        {images.length > 0 && (
+          <div className="attachments">
+            {images.map((img) => (
+              <div key={img.id} className="attachment" title={`${img.name} · ${formatBytes(img.size)}`}>
+                <img src={img.dataUrl} alt={img.name} />
+                <button className="attachment-x" onClick={() => onRemoveImage(img.id)}>
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {menuOpen && (
           <ul className="mention-menu">
             {suggestions.map((f, i) => (
@@ -164,7 +222,31 @@ export function ChatPanel({
             ))}
           </ul>
         )}
+
         <div className="composer">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const list = e.target.files ? Array.from(e.target.files) : [];
+              if (list.length) onAttachFiles(list);
+              e.target.value = "";
+            }}
+          />
+          <button className="icon-btn" title="Attach image" onClick={() => fileRef.current?.click()}>
+            🖼
+          </button>
+          <button
+            className={listening ? "icon-btn rec" : "icon-btn"}
+            title={speechSupported ? "Dictate" : "Speech recognition unavailable"}
+            onClick={toggleMic}
+            disabled={!speechSupported}
+          >
+            🎤
+          </button>
           <textarea
             ref={taRef}
             value={input}
@@ -188,7 +270,7 @@ export function ChatPanel({
               Stop
             </button>
           ) : (
-            <button className="btn primary" onClick={onSend} disabled={!input.trim()}>
+            <button className="btn primary" onClick={onSend} disabled={!input.trim() && images.length === 0}>
               Send
             </button>
           )}

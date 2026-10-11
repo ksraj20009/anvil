@@ -79,6 +79,15 @@ export function toOpenAIMessages(messages: ChatMessage[]): unknown[] {
     if (m.role === "tool") {
       return { role: "tool", tool_call_id: m.toolCallId, content: m.content };
     }
+    if (m.images?.length) {
+      return {
+        role: m.role,
+        content: [
+          ...(m.content ? [{ type: "text", text: m.content }] : []),
+          ...m.images.map((img) => ({ type: "image_url", image_url: { url: img.dataUrl } })),
+        ],
+      };
+    }
     return { role: m.role, content: m.content };
   });
 }
@@ -91,6 +100,7 @@ interface AnthropicBlock {
   input?: unknown;
   tool_use_id?: string;
   content?: unknown;
+  source?: unknown;
 }
 
 export function toAnthropicMessages(messages: ChatMessage[]): {
@@ -127,6 +137,13 @@ export function toAnthropicMessages(messages: ChatMessage[]): {
         tool_use_id: m.toolCallId,
         content: m.content,
       });
+    } else if (m.images?.length) {
+      const blocks: AnthropicBlock[] = m.images.map((img) => ({
+        type: "image",
+        source: { type: "base64", media_type: img.mime, data: img.data },
+      }));
+      if (m.content) blocks.push({ type: "text", text: m.content });
+      out.push({ role: m.role, content: blocks });
     } else {
       out.push({ role: m.role, content: m.content });
     }

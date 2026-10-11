@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ChatMessage, LogLine, PendingChange, Settings } from "./types";
-import { vfs } from "./lib/vfs";
+import type { ChatImage, ChatMessage, LogLine, PendingChange, Settings } from "./types";
+import { vfs, type VFile } from "./lib/vfs";
 import { loadSettings, saveSettings, loadSessions, saveSessions } from "./lib/storage";
 import { serializeProject, parseProject } from "./lib/project";
 import { getProvider } from "./lib/providers";
@@ -17,6 +17,8 @@ import { SettingsModal } from "./components/SettingsModal";
 import { DiffReview } from "./components/DiffReview";
 import { SessionList } from "./components/SessionList";
 import { CommandPalette, type Command } from "./components/CommandPalette";
+import { GitHubPanel } from "./components/GitHubPanel";
+import { readImageFile, MAX_IMAGES, type AttachedImage } from "./lib/vision";
 
 const SYSTEM_PROMPT = `You are ANVIL, an AI coding agent running inside a web application.
 You operate on the user's virtual project through tools:
@@ -68,6 +70,8 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [logs, setLogs] = useState<LogLine[]>([
     { level: "system", text: "ANVIL terminal — JavaScript + Python sandbox. Type `help`." },
   ]);
@@ -189,6 +193,45 @@ export default function App() {
     pushLog("system", "Project reset to the starter files.");
   }, [pushLog]);
 
+  // ---- GitHub sync ---------------------------------------------------------
+  const pullIntoWorkspace = useCallback(
+    (incoming: VFile[]) => {
+      if (
+        vfs.list().length &&
+        !window.confirm(`Replace your current files with ${incoming.length} files from GitHub?`)
+      )
+        return;
+      vfs.replaceAll(incoming);
+      pushLog("system", `Pulled ${incoming.length} files from GitHub.`);
+    },
+    [pushLog]
+  );
+
+  // ---- Image attachments ---------------------------------------------------
+  const onAttachFiles = useCallback(
+    async (list: File[]) => {
+      const room = MAX_IMAGES - attachedImages.length;
+      if (room <= 0) {
+        pushLog("warn", `You can attach up to ${MAX_IMAGES} images per message.`);
+        return;
+      }
+      for (const file of list.slice(0, room)) {
+        try {
+          const img = await readImageFile(file);
+          setAttachedImages((prev) => (prev.length >= MAX_IMAGES ? prev : [...prev, img]));
+        } catch (e) {
+          pushLog("error", e instanceof Error ? e.message : String(e));
+        }
+      }
+    },
+    [attachedImages.length, pushLog]
+  );
+
+  const onRemoveImage = useCallback(
+    (id: string) => setAttachedImages((prev) => prev.filter((i) => i.id !== id)),
+    []
+  );
+
   // ---- Sessions ------------------------------------------------------------
   const flushActive = () =>
     sessionsRef.current.sessions.map((s) =>
@@ -259,7 +302,7 @@ export default function App() {
   // ---- Send / agent loop ---------------------------------------------------
   const send = async () => {
     const text = input.trim();
-    if (!text || busy) return;
+    if ((!text && attachedImages.length === 0) || busy) return;
     const p = getProvider(settings.providerId);
     const apiKey = settings.apiKeys[settings.providerId] ?? "";
 
@@ -272,9 +315,20 @@ export default function App() {
       return;
     }
 
+    const chatImages: ChatImage[] = attachedImages.map((i) => ({
+      mime: i.mime,
+      data: i.data,
+      dataUrl: i.dataUrl,
+    }));
+    const imageUrls = attachedImages.map((i) => i.dataUrl);
     setInput("");
-    setItems((it) => [...it, { kind: "user", text }]);
-    historyRef.current.push({ role: "user", content: expandMentions(text, files) });
+    setAttachedImages([]);
+    setItems((it) => [...it, { kind: "user", text, images: imageUrls.length ? imageUrls : undefined }]);
+    historyRef.current.push({
+      role: "user",
+      content: expandMentions(text, files),
+      images: chatImages.length ? chatImages : undefined,
+    });
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -428,6 +482,7 @@ export default function App() {
     },
     { id: "agent", label: `Turn agent mode ${agentMode ? "off" : "on"}`, run: () => setAgentMode((v) => !v) },
     { id: "settings", label: "Open settings", run: () => setSettingsOpen(true) },
+    { id: "github", label: "GitHub: sync a repository", run: () => setGithubOpen(true) },
     { id: "clear-term", label: "Clear terminal", run: () => setLogs([]) },
   ];
 
@@ -462,6 +517,9 @@ export default function App() {
           <span className="model-chip" title="Active provider and model">
             {modelChip}
           </span>
+          <button className="btn ghost" onClick={() => setGithubOpen(true)} title="Sync with a GitHub repo">
+            GitHub
+          </button>
           <button className="btn ghost" onClick={() => setSettingsOpen(true)}>
             Settings
           </button>
@@ -498,6 +556,9 @@ export default function App() {
           agentMode={agentMode}
           setAgentMode={setAgentMode}
           files={vfs.list()}
+          images={attachedImages}
+          onAttachFiles={onAttachFiles}
+          onRemoveImage={onRemoveImage}
         />
         <div className="right">
           <EditorPanel
@@ -519,6 +580,15 @@ export default function App() {
       )}
 
       {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
+
+      {githubOpen && (
+        <GitHubPanel
+          token={settings.githubToken}
+          onTokenChange={(t) => setSettings((s) => ({ ...s, githubToken: t }))}
+          onPullIntoWorkspace={pullIntoWorkspace}
+          onClose={() => setGithubOpen(false)}
+        />
+      )}
 
       {pendingChange && (
         <DiffReview

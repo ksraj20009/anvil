@@ -37,6 +37,10 @@ sandboxed terminal.
 - **Command palette** — press ⌘K / Ctrl K to run any action (new file, run, export, switch
   theme, …).
 - **@-mentions** — type `@` in the prompt to attach a file's contents as context.
+- **Vision input** — attach screenshots or images to a prompt (for vision-capable models).
+- **Voice input** — dictate prompts with the mic button (Web Speech API).
+- **GitHub sync** — connect a personal access token, pull a repo into the workspace, and
+  push your changes back as a commit.
 - **Light & dark themes** — toggled from Settings or the palette.
 - **Streaming chat** — token-by-token responses for plain Q&A.
 - **Two key modes** — BYOK (key stays in the browser) or a hosted proxy (key stays on
@@ -103,10 +107,10 @@ In **hosted proxy** mode the same listing is served by the Edge Function
 
 ## Testing
 
-`npm test` runs the unit suite (vitest, 44 tests) covering key detection, model-list
-parsing/filtering, the OpenAI/Anthropic message converters, @-mention parsing, session
-serialization, language detection, project/chat serialization, and diff statistics.
-`npm run typecheck` type-checks the app.
+`npm test` runs the unit suite (vitest, 59 tests) covering key detection, model-list
+parsing/filtering, the OpenAI/Anthropic message converters (incl. images), @-mention
+parsing, session serialization, GitHub helpers, language detection, image handling,
+project/chat serialization, and diff statistics. `npm run typecheck` type-checks the app.
 
 ## Architecture
 
@@ -124,14 +128,16 @@ src/
     sandbox.ts     Web Worker JavaScript runner
     python.ts      Pyodide (CPython/WASM) runner
     exec.ts        Language dispatch: JavaScript vs Python
+    github.ts      GitHub client (list repos, pull tree, push commit) + pure helpers
+    vision.ts      Image attachments (read, validate, base64)
     diff.ts        Change statistics for the review card
     markdown.ts    Sanitized markdown for the transcript
     storage.ts     Settings persistence
   components/      FileExplorer · EditorPanel · ChatPanel · TerminalPanel
-                   SettingsModal · DiffReview · SessionList · CommandPalette
+                   SettingsModal · DiffReview · SessionList · CommandPalette · GitHubPanel
   App.tsx          Orchestration: state, agent run, approval gate, terminal
 api/chat.ts        Vercel Edge Function — the hosted proxy (chat + model list)
-tests/             vitest unit tests (44)
+tests/             vitest unit tests (59)
 ```
 
 The agent runs a bounded loop (`maxSteps`, default 8): ask the model for the next step;
@@ -153,10 +159,9 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a deeper walkthrough.
 ## Roadmap
 
 - WebContainers for a full Node/npm runtime in the browser
-- Zip import/export and two-way sync with a GitHub repo
 - MCP tool support and custom tool definitions
 - Streaming tool calls and inline (non-modal) diffs
-- Vision input (screenshots/designs) and voice prompts
+- Zip import/export and a diff-aware GitHub push (only changed files)
 
 ## Tech
 

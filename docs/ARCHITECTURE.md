@@ -82,6 +82,20 @@ live in the UI and are flushed back to the store on every change (`anvil.session
 prompt as `<file>` blocks. The command palette (`components/CommandPalette.tsx`) exposes
 every top-level action under ⌘K / Ctrl K.
 
+## GitHub sync
+
+`src/lib/github.ts` talks to the GitHub REST API with a user-supplied personal access
+token (stored in settings, sent only to api.github.com). Pull reads the git tree, filters
+to text blobs (`isTextPath`), and downloads contents into the VFS. Push creates blobs, a
+tree, a commit and updates the branch ref — one commit for the whole workspace. The pure
+helpers (`isTextPath`, `selectRepoFiles`, `parseRepos`, `decodeBase64`) are unit-tested.
+
+## Vision & voice
+
+`src/lib/vision.ts` validates and reads image files into base64 attachments. The
+converters in `llm.ts` turn them into OpenAI `image_url` parts or Anthropic `image`
+blocks. Voice input uses the Web Speech API in the composer.
+
 ## Persistence & portability
 
 Everything lives in the browser's `localStorage`: the project tree (`anvil.vfs.v1`),
