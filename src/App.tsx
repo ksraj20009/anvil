@@ -315,6 +315,18 @@ export default function App() {
       return;
     }
 
+    if (p.isCustom && settings.mode === "proxy") {
+      setItems((it) => [
+        ...it,
+        {
+          kind: "error",
+          text: `Custom providers (${p.label}) work in "Bring your own key" mode only — the hosted proxy doesn't know them. Switch in Settings.`,
+        },
+      ]);
+      setSettingsOpen(true);
+      return;
+    }
+
     const chatImages: ChatImage[] = attachedImages.map((i) => ({
       mime: i.mime,
       data: i.data,

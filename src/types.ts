@@ -59,6 +59,8 @@ export interface ProviderConfig {
   color: string;
   /** Whether an API key is required (false for local endpoints). */
   requiresKey: boolean;
+  /** True for user-defined providers (BYOK only). */
+  isCustom?: boolean;
   models: { id: string; label: string }[];
 }
 

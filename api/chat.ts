@@ -47,6 +47,20 @@ const PROVIDERS: Record<string, ProviderEntry> = {
     env: "COHERE_API_KEY",
   },
   cerebras: { baseUrl: "https://api.cerebras.ai/v1", kind: "openai", env: "CEREBRAS_API_KEY" },
+  huggingface: { baseUrl: "https://router.huggingface.co/v1", kind: "openai", env: "HF_TOKEN" },
+  vercel: { baseUrl: "https://ai-gateway.vercel.sh/v1", kind: "openai", env: "AI_GATEWAY_API_KEY" },
+  deepinfra: { baseUrl: "https://api.deepinfra.com/v1/openai", kind: "openai", env: "DEEPINFRA_API_KEY" },
+  sambanova: { baseUrl: "https://api.sambanova.ai/v1", kind: "openai", env: "SAMBANOVA_API_KEY" },
+  novita: { baseUrl: "https://api.novita.ai/v3/openai", kind: "openai", env: "NOVITA_API_KEY" },
+  hyperbolic: { baseUrl: "https://api.hyperbolic.xyz/v1", kind: "openai", env: "HYPERBOLIC_API_KEY" },
+  qwen: {
+    baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    kind: "openai",
+    env: "DASHSCOPE_API_KEY",
+  },
+  moonshot: { baseUrl: "https://api.moonshot.cn/v1", kind: "openai", env: "MOONSHOT_API_KEY" },
+  zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4", kind: "openai", env: "ZHIPU_API_KEY" },
+  aimlapi: { baseUrl: "https://api.aimlapi.com/v1", kind: "openai", env: "AIMLAPI_KEY" },
 };
 
 function jsonError(message: string, status: number): Response {

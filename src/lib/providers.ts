@@ -1,4 +1,5 @@
 import type { ProviderConfig } from "../types";
+import { customProviders, customToConfig } from "./customProviders";
 
 /**
  * ANVIL is provider-agnostic. Every provider below speaks one of two wire
@@ -319,10 +320,196 @@ export const PROVIDERS: ProviderConfig[] = [
     requiresKey: false,
     models: [{ id: "local-model", label: "Loaded local model" }],
   },
+  {
+    id: "huggingface",
+    label: "Hugging Face",
+    kind: "openai",
+    baseUrl: "https://router.huggingface.co/v1",
+    keyLabel: "Hugging Face token",
+    keyPlaceholder: "hf_...",
+    envVar: "HF_TOKEN",
+    docsUrl: "https://huggingface.co/settings/tokens",
+    defaultModel: "openai/gpt-oss-120b",
+    color: "#ffd21e",
+    requiresKey: true,
+    models: [
+      { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B" },
+      { id: "deepseek-ai/DeepSeek-R1", label: "DeepSeek R1" },
+      { id: "meta-llama/Llama-3.3-70B-Instruct", label: "Llama 3.3 70B" },
+    ],
+  },
+  {
+    id: "vercel",
+    label: "Vercel AI Gateway",
+    kind: "openai",
+    baseUrl: "https://ai-gateway.vercel.sh/v1",
+    keyLabel: "AI Gateway API key",
+    keyPlaceholder: "...",
+    envVar: "AI_GATEWAY_API_KEY",
+    docsUrl: "https://vercel.com/dashboard/ai-gateway",
+    defaultModel: "openai/gpt-4o-mini",
+    color: "#111111",
+    requiresKey: true,
+    models: [
+      { id: "openai/gpt-4o-mini", label: "OpenAI GPT-4o mini" },
+      { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
+      { id: "google/gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+    ],
+  },
+  {
+    id: "deepinfra",
+    label: "DeepInfra",
+    kind: "openai",
+    baseUrl: "https://api.deepinfra.com/v1/openai",
+    keyLabel: "DeepInfra API key",
+    keyPlaceholder: "...",
+    envVar: "DEEPINFRA_API_KEY",
+    docsUrl: "https://deepinfra.com/dash/api_keys",
+    defaultModel: "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    color: "#7c3aed",
+    requiresKey: true,
+    models: [
+      { id: "meta-llama/Meta-Llama-3.1-8B-Instruct", label: "Llama 3.1 8B" },
+      { id: "deepseek-ai/DeepSeek-V3", label: "DeepSeek V3" },
+      { id: "Qwen/Qwen2.5-Coder-32B-Instruct", label: "Qwen2.5 Coder 32B" },
+    ],
+  },
+  {
+    id: "sambanova",
+    label: "SambaNova",
+    kind: "openai",
+    baseUrl: "https://api.sambanova.ai/v1",
+    keyLabel: "SambaNova API key",
+    keyPlaceholder: "...",
+    envVar: "SAMBANOVA_API_KEY",
+    docsUrl: "https://cloud.sambanova.ai/apis",
+    defaultModel: "Meta-Llama-3.3-70B-Instruct",
+    color: "#dc2626",
+    requiresKey: true,
+    models: [
+      { id: "Meta-Llama-3.3-70B-Instruct", label: "Llama 3.3 70B" },
+      { id: "Meta-Llama-3.1-8B-Instruct", label: "Llama 3.1 8B" },
+      { id: "DeepSeek-R1", label: "DeepSeek R1" },
+    ],
+  },
+  {
+    id: "novita",
+    label: "Novita AI",
+    kind: "openai",
+    baseUrl: "https://api.novita.ai/v3/openai",
+    keyLabel: "Novita API key",
+    keyPlaceholder: "sk_...",
+    envVar: "NOVITA_API_KEY",
+    docsUrl: "https://novita.ai/settings/key-management",
+    defaultModel: "meta-llama/llama-3.1-8b-instruct",
+    color: "#06b6d4",
+    requiresKey: true,
+    models: [
+      { id: "meta-llama/llama-3.1-8b-instruct", label: "Llama 3.1 8B" },
+      { id: "deepseek/deepseek-r1", label: "DeepSeek R1" },
+    ],
+  },
+  {
+    id: "hyperbolic",
+    label: "Hyperbolic",
+    kind: "openai",
+    baseUrl: "https://api.hyperbolic.xyz/v1",
+    keyLabel: "Hyperbolic API key",
+    keyPlaceholder: "...",
+    envVar: "HYPERBOLIC_API_KEY",
+    docsUrl: "https://app.hyperbolic.xyz/settings",
+    defaultModel: "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    color: "#14b8a6",
+    requiresKey: true,
+    models: [
+      { id: "meta-llama/Meta-Llama-3.1-8B-Instruct", label: "Llama 3.1 8B" },
+      { id: "deepseek-ai/DeepSeek-V3", label: "DeepSeek V3" },
+    ],
+  },
+  {
+    id: "qwen",
+    label: "Qwen (DashScope)",
+    kind: "openai",
+    baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    keyLabel: "DashScope API key",
+    keyPlaceholder: "sk-...",
+    envVar: "DASHSCOPE_API_KEY",
+    docsUrl: "https://bailian.console.alibabacloud.com",
+    defaultModel: "qwen-plus",
+    color: "#615ced",
+    requiresKey: true,
+    models: [
+      { id: "qwen-plus", label: "Qwen Plus" },
+      { id: "qwen-max", label: "Qwen Max" },
+      { id: "qwen2.5-coder-32b-instruct", label: "Qwen2.5 Coder 32B" },
+    ],
+  },
+  {
+    id: "moonshot",
+    label: "Moonshot (Kimi)",
+    kind: "openai",
+    baseUrl: "https://api.moonshot.cn/v1",
+    keyLabel: "Moonshot API key",
+    keyPlaceholder: "sk-...",
+    envVar: "MOONSHOT_API_KEY",
+    docsUrl: "https://platform.moonshot.cn/console/api-keys",
+    defaultModel: "moonshot-v1-8k",
+    color: "#1f2937",
+    requiresKey: true,
+    models: [
+      { id: "moonshot-v1-8k", label: "Moonshot v1 8k" },
+      { id: "moonshot-v1-32k", label: "Moonshot v1 32k" },
+      { id: "kimi-k2-0711-preview", label: "Kimi K2" },
+    ],
+  },
+  {
+    id: "zhipu",
+    label: "Zhipu (GLM)",
+    kind: "openai",
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    keyLabel: "Zhipu API key",
+    keyPlaceholder: "...",
+    envVar: "ZHIPU_API_KEY",
+    docsUrl: "https://open.bigmodel.cn/usercenter/apikeys",
+    defaultModel: "glm-4-flash",
+    color: "#2563eb",
+    requiresKey: true,
+    models: [
+      { id: "glm-4-flash", label: "GLM-4 Flash" },
+      { id: "glm-4-plus", label: "GLM-4 Plus" },
+    ],
+  },
+  {
+    id: "aimlapi",
+    label: "AI/ML API",
+    kind: "openai",
+    baseUrl: "https://api.aimlapi.com/v1",
+    keyLabel: "AI/ML API key",
+    keyPlaceholder: "...",
+    envVar: "AIMLAPI_KEY",
+    docsUrl: "https://aimlapi.com/app/keys",
+    defaultModel: "gpt-4o-mini",
+    color: "#0ea5e9",
+    requiresKey: true,
+    models: [
+      { id: "gpt-4o-mini", label: "GPT-4o mini" },
+      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+      { id: "meta-llama/Llama-3.3-70B-Instruct-Turbo", label: "Llama 3.3 70B" },
+    ],
+  },
 ];
 
 export function getProvider(id: string): ProviderConfig {
-  return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
+  const builtin = PROVIDERS.find((p) => p.id === id);
+  if (builtin) return builtin;
+  const custom = customProviders.get(id);
+  if (custom) return customToConfig(custom);
+  return PROVIDERS[0];
+}
+
+/** Built-in providers followed by the user's custom ones. */
+export function providerList(): ProviderConfig[] {
+  return [...PROVIDERS, ...customProviders.list().map(customToConfig)];
 }
 
 /**
@@ -356,6 +543,7 @@ export function detectProviderFromKey(key: string): string | null {
   if (k.startsWith("pplx-")) return "perplexity";
   if (k.startsWith("fw_")) return "fireworks";
   if (k.startsWith("csk-")) return "cerebras";
+  if (k.startsWith("hf_")) return "huggingface";
   if (k.startsWith("AIza")) return "google";
   if (k.startsWith("sk-proj-") || k.startsWith("sk-")) return "openai";
   return null;

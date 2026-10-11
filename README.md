@@ -12,10 +12,10 @@ sandboxed terminal.
 
 ## Features
 
-- **Provider-agnostic** — 17 providers built in, from OpenAI, Claude and Grok to **Sarvam
+- **Provider-agnostic** — 27 providers built in, from OpenAI, Claude and Grok to **Sarvam
   AI** (the default), Google Gemini, NVIDIA NIM, Mistral, DeepSeek, Groq, Together,
-  Fireworks, OpenRouter, Perplexity, Cohere, Cerebras, and local Ollama / LM Studio.
-  Adding another is one entry in `src/lib/providers.ts`.
+  Fireworks, OpenRouter, Hugging Face, Vercel AI Gateway, Qwen, Moonshot, Zhipu, and local
+  Ollama / LM Studio — **or add any company yourself** in Settings.
 - **Auto-detected provider + live model list** — paste an API key and ANVIL recognises the
   provider from the key's shape (`sk-ant-…` → Claude, `sk-…` → OpenAI, `xai-…` → Grok),
   then calls that provider's `/models` endpoint to load the models your key can actually
@@ -109,8 +109,25 @@ they share one adapter; Sarvam is the default.
 | Cerebras | `api.cerebras.ai/v1` | `CEREBRAS_API_KEY` |
 | Ollama (local) | `localhost:11434/v1` | — none needed |
 | LM Studio (local) | `localhost:1234/v1` | — none needed |
+| Hugging Face | `router.huggingface.co/v1` | `HF_TOKEN` |
+| Vercel AI Gateway | `ai-gateway.vercel.sh/v1` | `AI_GATEWAY_API_KEY` |
+| DeepInfra | `api.deepinfra.com/v1/openai` | `DEEPINFRA_API_KEY` |
+| SambaNova | `api.sambanova.ai/v1` | `SAMBANOVA_API_KEY` |
+| Novita AI | `api.novita.ai/v3/openai` | `NOVITA_API_KEY` |
+| Hyperbolic | `api.hyperbolic.xyz/v1` | `HYPERBOLIC_API_KEY` |
+| Qwen (DashScope) | `dashscope-intl.aliyuncs.com/compatible-mode/v1` | `DASHSCOPE_API_KEY` |
+| Moonshot (Kimi) | `api.moonshot.cn/v1` | `MOONSHOT_API_KEY` |
+| Zhipu (GLM) | `open.bigmodel.cn/api/paas/v4` | `ZHIPU_API_KEY` |
+| AI/ML API | `api.aimlapi.com/v1` | `AIMLAPI_KEY` |
 
-Anything else that is OpenAI-compatible works via the **Base URL** field in Settings.
+### Any other provider
+
+Don't see your company? Open Settings → **Add a provider** and give it a name, a base URL
+and its wire format (OpenAI-compatible or Anthropic Messages). It then behaves like a
+built-in one — its own key slot, live model list, and it appears in the picker.
+
+Custom providers are **BYOK-only**; the hosted proxy only knows the built-ins. For any
+OpenAI-compatible endpoint you can also just point the **Base URL** field at it.
 
 ## Key handling
 

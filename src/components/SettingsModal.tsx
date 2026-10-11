@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Settings } from "../types";
-import { PROVIDERS, getProvider, effectiveProvider, detectProviderFromKey } from "../lib/providers";
+import { providerList, getProvider, effectiveProvider, detectProviderFromKey } from "../lib/providers";
+import { customProviders } from "../lib/customProviders";
 import { listModels } from "../lib/llm";
 
 interface Props {
@@ -16,6 +17,10 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
   const [modelError, setModelError] = useState<string | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
   const [nonce, setNonce] = useState(0);
+  const [newLabel, setNewLabel] = useState("");
+  const [newBaseUrl, setNewBaseUrl] = useState("");
+  const [newKind, setNewKind] = useState<"openai" | "anthropic">("openai");
+  const [newModel, setNewModel] = useState("");
 
   const defaultProvider = getProvider(draft.providerId);
   const provider = effectiveProvider(draft);
@@ -102,7 +107,7 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
           <div className="provider-pick">
             <span className="seg-dot" style={{ background: provider.color }} />
             <select value={draft.providerId} onChange={(e) => setProvider(e.target.value)}>
-              {PROVIDERS.map((p) => (
+              {providerList().map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.label}
                 </option>
@@ -223,6 +228,82 @@ export function SettingsModal({ settings, onSave, onClose }: Props) {
             Point at any OpenAI-compatible endpoint (Ollama, LM Studio, OpenRouter, a proxy).
             Leave blank to use {defaultProvider.label}'s default.
           </p>
+        </div>
+
+        <div className="field">
+          <label>Add a provider</label>
+          <p className="field-hint">
+            Any company works — give it a name, a base URL and its wire format. It then
+            behaves like a built-in provider (its own key, live model list).
+          </p>
+          <div className="custom-grid">
+            <input
+              placeholder="Name (e.g. My Company)"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+            />
+            <input
+              placeholder="Base URL (https://…/v1)"
+              value={newBaseUrl}
+              onChange={(e) => setNewBaseUrl(e.target.value)}
+            />
+            <select
+              value={newKind}
+              onChange={(e) => setNewKind(e.target.value as "openai" | "anthropic")}
+            >
+              <option value="openai">OpenAI-compatible</option>
+              <option value="anthropic">Anthropic Messages</option>
+            </select>
+            <input
+              placeholder="Default model id"
+              value={newModel}
+              onChange={(e) => setNewModel(e.target.value)}
+            />
+            <button
+              className="btn"
+              disabled={!newLabel.trim() || !newBaseUrl.trim() || !newModel.trim()}
+              onClick={() => {
+                const item = customProviders.add({
+                  label: newLabel.trim(),
+                  baseUrl: newBaseUrl.trim().replace(/\/+$/, ""),
+                  kind: newKind,
+                  defaultModel: newModel.trim(),
+                });
+                setNewLabel("");
+                setNewBaseUrl("");
+                setNewModel("");
+                setDraft((d) => ({ ...d, providerId: item.id, model: item.defaultModel }));
+              }}
+            >
+              Add provider
+            </button>
+          </div>
+          {customProviders.list().length > 0 && (
+            <ul className="custom-list">
+              {customProviders.list().map((c) => (
+                <li key={c.id}>
+                  <span>
+                    {c.label} <code>{c.baseUrl}</code>
+                  </span>
+                  <button
+                    className="icon-btn"
+                    title="Remove provider"
+                    onClick={() => {
+                      customProviders.remove(c.id);
+                      if (draft.providerId === c.id)
+                        setDraft((d) => ({
+                          ...d,
+                          providerId: "sarvam",
+                          model: getProvider("sarvam").defaultModel,
+                        }));
+                    }}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="field row">
