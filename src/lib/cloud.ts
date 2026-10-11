@@ -113,16 +113,19 @@ export async function listWorkspaces(cfg: CloudConfig): Promise<CloudWorkspace[]
 
 export async function saveWorkspace(
   cfg: CloudConfig,
-  input: { id?: string; name: string; files: VFile[]; sessions: Session[] }
+  input: { name: string; files: VFile[]; sessions: Session[] }
 ): Promise<CloudWorkspace> {
   const sb = await getClient(cfg);
   const user = await currentUser(cfg);
   if (!user) throw new Error("Not signed in.");
   const payload = { ...buildWorkspacePayload(input.name, input.files, input.sessions), user_id: user.id };
-  const query = input.id
-    ? sb.from("workspaces").update(payload).eq("id", input.id)
-    : sb.from("workspaces").insert(payload);
-  const { data, error } = await query.select().single();
+  // One workspace per user: upsert on the user_id unique constraint, so pressing
+  // "Save" repeatedly updates the same row instead of piling up duplicates.
+  const { data, error } = await sb
+    .from("workspaces")
+    .upsert(payload, { onConflict: "user_id" })
+    .select()
+    .single();
   if (error) throw new Error(error.message);
   return normalizeWorkspaceRow(data);
 }

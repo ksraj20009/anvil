@@ -5,17 +5,18 @@
 -- ── Workspaces: one row per user, holding their files + chats ──────────────
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
+  user_id uuid not null default auth.uid(),
   name text not null default 'My workspace',
   files jsonb not null default '[]'::jsonb,
   sessions jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- one workspace per user, so "Save" upserts instead of piling up rows
+  constraint workspaces_user_unique unique (user_id)
 );
 
 create index if not exists workspaces_user_id_idx
   on public.workspaces (user_id, updated_at desc);
-
 alter table public.workspaces enable row level security;
 
 drop policy if exists "workspaces are per-user" on public.workspaces;
